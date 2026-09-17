@@ -1,0 +1,25 @@
+{{define "content"}}
+<div class="toolbar">
+  <a href="/git-connections/new" class="btn btn-primary">+ New connection</a>
+</div>
+<div class="panel">
+  {{if .Connections}}
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Type</th></tr>
+    </thead>
+    <tbody>
+      {{range .Connections}}
+      <tr>
+        <td><a href="/git-connections/{{.ID}}">{{.Name}}</a></td>
+        <td><span class="badge trigger-{{.AuthKind}}">{{.AuthKind}}</span></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No shared connection yet — <a href="/git-connections/new">create one</a>, or use a dedicated key when creating a stack.</p>
+  {{end}}
+  <p class="muted" style="font-size:12px; margin-top:14px;">Creating, editing and regenerating a connection's key is admin-only; any signed-in user can view this list and a connection's public key (never its private half).</p>
+</div>
+{{end}}

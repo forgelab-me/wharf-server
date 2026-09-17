@@ -1,0 +1,36 @@
+{{define "content"}}
+<div class="stat-grid">
+  {{range .Stats}}
+  <div class="stat-card">
+    <div class="stat-value">{{.Value}}</div>
+    <div class="stat-label">{{.Label}}</div>
+    {{if .Hint}}<div class="stat-hint">{{.Hint}}</div>{{end}}
+  </div>
+  {{end}}
+</div>
+
+<section class="panel">
+  <h2>Recent deployments</h2>
+  {{if .Deployments}}
+  <table>
+    <thead>
+      <tr><th>Stack</th><th>Host</th><th>Action</th><th>Status</th><th>Trigger</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      {{range .Deployments}}
+      <tr>
+        <td><a href="/stacks/{{.StackID}}">{{.StackName}}</a></td>
+        <td>{{.HostName}}</td>
+        <td class="muted">{{.Action}}</td>
+        <td><span class="badge status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.Trigger}}</td>
+        <td class="muted">{{.CreatedAt}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No deployments yet.</p>
+  {{end}}
+</section>
+{{end}}

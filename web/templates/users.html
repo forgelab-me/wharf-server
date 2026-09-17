@@ -1,0 +1,49 @@
+{{define "content"}}
+<div class="toolbar">
+  <a href="/users/new" class="btn btn-primary">+ New user</a>
+</div>
+<div class="panel">
+  {{if .Users}}
+  <table>
+    <thead>
+      <tr><th>Username</th><th>Role</th><th>Sign-in</th><th>Last login</th><th></th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .Users}}
+      <tr>
+        <td>{{.Username}}{{if .MustChangePassword}} <span class="badge status-pending">pending first login</span>{{end}}</td>
+        <td>
+          <form method="post" action="/users/{{.Username}}/role" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <select name="role" onchange="this.form.requestSubmit()">
+              <option value="admin" {{if eq .Role "admin"}}selected{{end}}>Admin</option>
+              <option value="operator" {{if eq .Role "operator"}}selected{{end}}>Operator</option>
+            </select>
+          </form>
+        </td>
+        <td class="muted">{{if .OIDCIssuer}}SSO ({{.OIDCIssuer}}){{else}}Local password{{end}}</td>
+        <td class="muted">{{if .LastLoginAt}}{{.LastLoginAt}}{{else}}never{{end}}</td>
+        <td class="row-actions">
+          {{if not .OIDCIssuer}}
+          <form method="post" action="/users/{{.Username}}/reset-password" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Reset password</button>
+          </form>
+          {{end}}
+        </td>
+        <td class="row-actions">
+          <form method="post" action="/users/{{.Username}}/delete" class="inline-form delete-user-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No users yet.</p>
+  {{end}}
+  <p class="muted" style="font-size:12px; margin-top:14px;">Admin can manage Git connections, private registry credentials, and other users. Operator can create/deploy stacks and use existing Git connections, but not manage them. The last remaining admin can't be demoted or deleted.</p>
+</div>
+{{end}}

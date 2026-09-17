@@ -1,0 +1,22 @@
+{{define "content"}}
+<form class="form" method="post" action="/users">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-row">
+    <label>Username</label>
+    <input type="text" name="username" required autofocus>
+  </div>
+  <div class="form-row">
+    <label>Initial password</label>
+    <input type="password" name="password" required minlength="8">
+    <p class="muted" style="margin-top:6px; font-size:12px;">The new user is forced to change this on their first login — it only has to be good enough to tell them once.</p>
+  </div>
+  <fieldset class="form-row">
+    <legend>Role</legend>
+    <label class="radio"><input type="radio" name="role" value="operator" checked> Operator — creates/deploys stacks, uses existing Git connections</label>
+    <label class="radio"><input type="radio" name="role" value="admin"> Admin — also manages Git connections, registry credentials, and other users</label>
+  </fieldset>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create user</button>
+  </div>
+</form>
+{{end}}

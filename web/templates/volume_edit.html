@@ -1,0 +1,39 @@
+{{define "content"}}
+<div class="panel edit-panel">
+  <div class="muted" style="margin-bottom:12px; font-family: var(--mono); font-size:13px;">
+    <a href="/volumes/{{.HostID}}/{{.VolumeName}}/browse">{{.VolumeName}}</a>:/{{.Path}}
+  </div>
+  <form method="post" action="/volumes/{{.HostID}}/{{.VolumeName}}/browse/edit">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="path" value="{{.Path}}">
+    <div class="form-row">
+      <textarea name="content" style="font-family: var(--mono); font-size:13px; width:100%;">{{.Content}}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="/volumes/{{.HostID}}/{{.VolumeName}}/browse?path={{.ParentPath}}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+</div>
+<script>
+  // The textarea used a fixed rows="24" -- fine on a tall monitor, but
+  // it stops well short of the viewport on anything bigger and leaves a
+  // lot of dead space below the panel, which is what was actually
+  // reported. Sized in JS against the textarea's own on-screen position
+  // rather than a guessed CSS calc() -- it stays correct regardless of
+  // topbar height, sidebar wrapping, or window resizing, none of which
+  // a hardcoded offset could account for.
+  (function () {
+    var ta = document.querySelector('.edit-panel textarea');
+    if (!ta) return;
+    function resize() {
+      ta.style.height = 'auto';
+      var top = ta.getBoundingClientRect().top;
+      var available = window.innerHeight - top - 92; // room for Save/Cancel + panel padding below
+      ta.style.height = Math.max(200, available) + 'px';
+    }
+    resize();
+    window.addEventListener('resize', resize);
+  })();
+</script>
+{{end}}

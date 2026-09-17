@@ -1,0 +1,101 @@
+{{define "content"}}
+<div class="panel" style="border-color: var(--warn);">
+  <p class="muted" style="margin:0;">
+    <span class="badge secret-badge" style="margin-left:0;">admin only</span>
+    Every action here runs in a throwaway container mounting this volume — nothing is cached or shown elsewhere. Deleting a directory removes everything inside it; there's no undo.
+  </p>
+</div>
+
+<div class="panel">
+  <div class="muted" style="margin-bottom:12px; font-family: var(--mono); font-size:13px;">
+    <a href="/volumes/{{.HostID}}/{{.VolumeName}}/browse">{{.VolumeName}}</a>{{if .Path}}:/{{.Path}}{{else}}:/{{end}}
+  </div>
+  <table>
+    <thead><tr><th>Name</th><th>Size</th><th>Modified</th><th></th></tr></thead>
+    <tbody>
+      {{if .HasParent}}
+      <tr>
+        <td><a href="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse?path={{.ParentPath}}">..</a></td>
+        <td class="muted">—</td>
+        <td class="muted">—</td>
+        <td></td>
+      </tr>
+      {{end}}
+      {{range .Entries}}
+      <tr>
+        <td>
+          {{if .IsDir}}
+          <a href="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse?path={{.RelPath}}"><code>{{.Name}}/</code></a>
+          {{else}}
+          <code>{{.Name}}</code>
+          {{end}}
+        </td>
+        <td class="muted">{{.Size}}</td>
+        <td class="muted">{{.Modified}}</td>
+        <td class="row-actions">
+          {{if not .IsDir}}
+          <a href="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse/edit?path={{.RelPath}}" class="btn btn-ghost btn-sm">Edit</a>
+          <a href="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse/download?path={{.RelPath}}" class="btn btn-ghost btn-sm">Download</a>
+          {{end}}
+          <form method="post" action="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse/rename" class="inline-form volume-rename-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="path" value="{{.RelPath}}">
+            <input type="text" name="new_name" value="{{.Name}}" class="rename-input" hidden>
+            <button type="button" class="btn btn-ghost btn-sm rename-trigger">Rename</button>
+          </form>
+          <form method="post" action="/volumes/{{$.HostID}}/{{$.VolumeName}}/browse/delete" class="inline-form volume-delete-form" data-is-dir="{{.IsDir}}" data-name="{{.Name}}">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="hidden" name="path" value="{{.RelPath}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+
+<div class="panel">
+  <h2>Upload a file</h2>
+  <form method="post" action="/volumes/{{.HostID}}/{{.VolumeName}}/browse/upload?path={{.Path}}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <input type="file" name="file" required>
+    </div>
+    <p class="muted" style="font-size:12px;">Uploads into the current directory. A file with the same name is overwritten. 10 MiB max.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </div>
+  </form>
+</div>
+
+<script>
+  document.querySelectorAll('.rename-trigger').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var form = btn.closest('form');
+      var input = form.querySelector('.rename-input');
+      var current = input.value;
+      var next = prompt('Rename to:', current);
+      if (!next || next === current) return;
+      input.hidden = false;
+      input.value = next;
+      // type="button", not "submit" -- layout.html's generic spinner
+      // only ever looks at button[type="submit"], so this trigger needs
+      // its own explicit busy state.
+      btn.disabled = true;
+      btn.classList.add('btn-loading');
+      form.requestSubmit();
+    });
+  });
+  document.querySelectorAll('.volume-delete-form').forEach(function (form) {
+    form.addEventListener('submit', function (e) {
+      var what = form.dataset.isDir === 'true'
+        ? 'Delete "' + form.dataset.name + '" and everything inside it? This can\'t be undone.'
+        : 'Delete "' + form.dataset.name + '"? This can\'t be undone.';
+      if (!confirm(what)) {
+        e.preventDefault();
+      }
+    });
+  });
+</script>
+{{end}}

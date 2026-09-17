@@ -1,0 +1,67 @@
+{{define "content"}}
+<form method="post" action="/volumes/delete" class="bulk-form">
+<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <select class="host-filter">
+      <option>All hosts</option>
+      {{range .Hosts}}<option>{{.Name}}</option>{{end}}
+    </select>
+    <input type="search" class="search-filter" placeholder="Search volumes...">
+    <select class="usage-filter">
+      <option value="">All</option>
+      <option value="used">In use</option>
+      <option value="unused">Unused</option>
+    </select>
+  </div>
+  {{if eq .Role "admin"}}
+  <div class="filter-group">
+    <button type="button" class="btn btn-ghost clean-unused-btn">Clean up unused volumes</button>
+    <button type="submit" class="btn btn-ghost delete-selected-btn" disabled>Delete selected</button>
+  </div>
+  {{end}}
+</div>
+<div class="panel">
+  {{if .Volumes}}
+  <table>
+    <thead>
+      <tr>
+        {{if eq .Role "admin"}}<th><input type="checkbox" class="select-all"></th>{{end}}
+        <th>Name</th><th>Host</th><th>Driver</th><th>Size</th><th>Used by</th><th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Volumes}}
+      <tr data-host="{{.Host}}" data-used="{{if .UsedBy}}true{{else}}false{{end}}">
+        {{if eq $.Role "admin"}}<td><input type="checkbox" class="row-check" name="names" value="{{.HostID}}|{{.Name}}"></td>{{end}}
+        <td><a href="/volumes/{{.HostID}}/{{.Name}}"><code>{{.Name}}</code></a></td>
+        <td>{{.Host}}</td>
+        <td class="muted">{{.Driver}}</td>
+        <td class="muted" data-vol-key="{{.HostID}}|{{.Name}}">{{.Size}}</td>
+        <td>{{if .UsedBy}}{{.UsedBy}}{{else}}<span class="badge state-exited">unused</span>{{end}}</td>
+        <td class="row-actions">{{if eq $.Role "admin"}}<a href="/volumes/{{.HostID}}/{{.Name}}/browse" class="btn btn-ghost btn-sm">Browse</a>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:12px; margin-top:14px;">"Browse" opens the volume's contents in a throwaway container — list, rename, delete, upload, and edit small text files. Admins only.</p>
+  {{else}}
+  <p class="muted">No volumes on any connected host yet.</p>
+  {{end}}
+</div>
+</form>
+<script>
+  (function () {
+    var cells = document.querySelectorAll('[data-vol-key]');
+    if (!cells.length) return;
+    fetch('/volumes/sizes').then(function (r) { return r.json(); }).then(function (sizes) {
+      cells.forEach(function (cell) {
+        var size = sizes[cell.dataset.volKey];
+        cell.textContent = size || '—';
+      });
+    }).catch(function () {
+      cells.forEach(function (cell) { cell.textContent = '—'; });
+    });
+  })();
+</script>
+{{end}}

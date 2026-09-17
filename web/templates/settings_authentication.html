@@ -1,0 +1,68 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Single sign-on (OIDC)</h2>
+  <p class="muted" style="font-size:12px;">Works with any standard OIDC provider (Authelia, Keycloak, Authentik, ...) — Wharf only ever speaks the discovery + authorization code protocol, nothing provider-specific. With no groups configured below, anyone who can authenticate against this provider gets a Wharf account automatically, as <strong>operator</strong>. Promote or demote any account from the <a href="/users">Users</a> page.</p>
+  {{if .OIDCConfigured}}
+  <table class="kv-table">
+    <tr><th>Issuer</th><td><code>{{.OIDC.IssuerURL}}</code></td></tr>
+    <tr><th>Client ID</th><td><code>{{.OIDC.ClientID}}</code></td></tr>
+    <tr><th>Button label</th><td>{{.OIDC.DisplayName}}</td></tr>
+    <tr><th>Admin group</th><td>{{if .OIDC.AdminGroup}}<code>{{.OIDC.AdminGroup}}</code>{{else}}<span class="muted">not configured</span>{{end}}</td></tr>
+    <tr><th>Operator group</th><td>{{if .OIDC.OperatorGroup}}<code>{{.OIDC.OperatorGroup}}</code>{{else}}<span class="muted">not configured</span>{{end}}</td></tr>
+    <tr><th>Who can sign in</th><td>{{if or .OIDC.AdminGroup .OIDC.OperatorGroup}}Only members of the group(s) above{{else}}<span class="muted">anyone who can authenticate against the provider</span>{{end}}</td></tr>
+    <tr><th>Local username/password</th><td>{{if .OIDC.DisableLocalAuth}}<span class="badge status-failed">disabled — SSO only</span>{{else}}<span class="muted">still allowed</span>{{end}}</td></tr>
+  </table>
+  <form method="post" action="/settings/oidc/delete" class="inline-form delete-oidc-form" style="margin-top:10px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+  </form>
+  {{else}}
+  <p class="muted">No SSO provider configured — /login only offers a local username/password.</p>
+  {{end}}
+
+  <h3 style="margin-top:20px; font-size:14px;">{{if .OIDCConfigured}}Replace{{else}}Add{{end}} a provider</h3>
+  <div class="form-row">
+    <label>Redirect URI to register on the provider</label>
+    <div class="code-box">
+      <pre id="oidc-redirect">{{.OIDCRedirectURL}}</pre>
+      <button class="btn btn-ghost copy-btn" data-copy-target="oidc-redirect">Copy</button>
+    </div>
+  </div>
+  <form method="post" action="/settings/oidc">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Issuer URL</label>
+      <input type="text" name="issuer_url" value="{{.OIDC.IssuerURL}}" required placeholder="e.g. https://auth.example.com">
+    </div>
+    <div class="form-row">
+      <label>Client ID</label>
+      <input type="text" name="client_id" value="{{.OIDC.ClientID}}" required>
+    </div>
+    <div class="form-row">
+      <label>Client secret</label>
+      <input type="password" name="client_secret" {{if not .OIDCConfigured}}required{{end}} placeholder="{{if .OIDCConfigured}}leave blank to keep the current secret{{end}}">
+    </div>
+    <div class="form-row">
+      <label>Button label (optional)</label>
+      <input type="text" name="display_name" value="{{.OIDC.DisplayName}}" placeholder="SSO">
+    </div>
+    <div class="form-row">
+      <label>Admin group (optional)</label>
+      <input type="text" name="admin_group" value="{{.OIDC.AdminGroup}}" placeholder="e.g. G_WHARF_ADMIN">
+    </div>
+    <div class="form-row">
+      <label>Operator group (optional)</label>
+      <input type="text" name="operator_group" value="{{.OIDC.OperatorGroup}}" placeholder="e.g. G_WHARF_OPERATOR">
+    </div>
+    <p class="muted" style="font-size:12px;">Checked against the provider's <code>groups</code> claim on <strong>every</strong> sign-in, not just the first — a member of Admin group becomes/stays admin, a member of Operator group becomes/stays operator. <strong>Setting either one turns sign-in itself into an allowlist:</strong> once one of these is configured, only members of that group (or both, if both are set) can sign in at all — everyone else is refused, not silently given an operator seat. Leave both blank to keep the original behavior (anyone who authenticates gets in as operator, roles only ever change manually via <a href="/users">Users</a>). Your provider must be configured to send a <code>groups</code> claim, and its client registration must permit the <code>groups</code> scope (verified against Authelia: add <code>groups</code> to that client's <code>scopes</code>, backed by an AD/LDAP group lookup).</p>
+    <div class="form-row">
+      <label class="switch-filter"><span class="switch"><input type="checkbox" name="disable_local_auth" value="1" {{if .OIDC.DisableLocalAuth}}checked{{end}}><span class="switch-track"></span></span> Disable local username/password sign-in</label>
+      <p class="muted" style="font-size:12px; margin-top:4px;"><strong>Real lockout risk:</strong> once this is on, <code>/login</code> only offers "Continue with {{.OIDC.DisplayName}}" — every existing local account (including yours) stops working, and there is no built-in way back in if the provider becomes unreachable or misconfigured afterward. Recovering from that requires direct access to the controller's database. Make sure SSO works end to end, for an account you can actually get into, before turning this on.</p>
+    </div>
+    <p class="muted" style="font-size:12px;">Register Wharf as a client on the provider first (issuer, client ID/secret, and the redirect URI above), then paste its details here.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</section>
+{{end}}

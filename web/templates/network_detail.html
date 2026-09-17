@@ -1,0 +1,49 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Network details</h2>
+  {{if .Detail.Name}}
+  <table class="kv-table">
+    <tr><th>Name</th><td><code>{{.Detail.Name}}</code></td></tr>
+    <tr><th>Driver</th><td>{{.Detail.Driver}}</td></tr>
+    <tr><th>Scope</th><td>{{.Detail.Scope}}</td></tr>
+    <tr><th>Subnet</th><td><code>{{if .Detail.Subnet}}{{.Detail.Subnet}}{{else}}—{{end}}</code></td></tr>
+    <tr><th>Gateway</th><td><code>{{if .Detail.Gateway}}{{.Detail.Gateway}}{{else}}—{{end}}</code></td></tr>
+    <tr><th>Internal</th><td>{{if .Detail.Internal}}yes{{else}}no{{end}}</td></tr>
+    <tr><th>Attachable</th><td>{{if .Detail.Attachable}}yes{{else}}no{{end}}</td></tr>
+  </table>
+
+  {{if .Detail.Labels}}
+  <h3 style="margin-top:20px; font-size:14px;">Labels</h3>
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Labels}}
+      <tr><td><code>{{.Key}}</code></td><td class="muted">{{.Value}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Connected containers</h2>
+  {{if .Containers}}
+  <table>
+    <thead><tr><th>Name</th><th>IP address</th></tr></thead>
+    <tbody>
+      {{range .Containers}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td class="muted">{{if .IPv4Address}}{{.IPv4Address}}{{else}}—{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No containers currently connected.</p>
+  {{end}}
+</section>
+{{end}}

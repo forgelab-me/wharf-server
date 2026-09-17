@@ -1,0 +1,52 @@
+{{define "content"}}
+<form method="post" action="/networks/delete" class="bulk-form">
+<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <select class="host-filter">
+      <option>All hosts</option>
+      {{range .Hosts}}<option>{{.Name}}</option>{{end}}
+    </select>
+    <input type="search" class="search-filter" placeholder="Search networks...">
+    <select class="usage-filter">
+      <option value="">All</option>
+      <option value="used">In use</option>
+      <option value="unused">Unused</option>
+    </select>
+  </div>
+  {{if eq .Role "admin"}}
+  <div class="filter-group">
+    <button type="button" class="btn btn-ghost clean-unused-btn">Clean up unused networks</button>
+    <button type="submit" class="btn btn-ghost delete-selected-btn" disabled>Delete selected</button>
+  </div>
+  {{end}}
+</div>
+<div class="panel">
+  {{if .Networks}}
+  <table>
+    <thead>
+      <tr>
+        {{if eq .Role "admin"}}<th><input type="checkbox" class="select-all"></th>{{end}}
+        <th>Name</th><th>Host</th><th>Driver</th><th>Scope</th><th>Connected containers</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Networks}}
+      <tr data-host="{{.Host}}" data-used="{{if .Containers}}true{{else}}false{{end}}">
+        {{if eq $.Role "admin"}}<td><input type="checkbox" class="row-check" name="names" value="{{.HostID}}|{{.Name}}"></td>{{end}}
+        <td><a href="/networks/{{.HostID}}/{{.Name}}"><code>{{.Name}}</code></a></td>
+        <td>{{.Host}}</td>
+        <td class="muted">{{.Driver}}</td>
+        <td class="muted">{{.Scope}}</td>
+        <td>{{if .Containers}}{{.Containers}}{{else}}<span class="muted">none</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:12px; margin-top:14px;">Docker's built-in networks (bridge, host, none) and any network still attached to a container can't be removed — the daemon refuses those on its own.</p>
+  {{else}}
+  <p class="muted">No networks on any connected host yet.</p>
+  {{end}}
+</div>
+</form>
+{{end}}

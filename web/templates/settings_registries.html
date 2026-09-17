@@ -1,0 +1,122 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Private registries</h2>
+  <p class="muted" style="font-size:12px;">Any number of registries, of any type — Docker Hub, GHCR, GitLab, Azure Container Registry, or a self-hosted Harbor/Nexus/Distribution. Each credential is used two ways: the image auto-update check (cf. a stack's Images policy) authenticates with it against that host, and the agent logs in with it before pulling on every deploy — so a stack's compose file can reference a private image on any host configured here, whether the stack lives in Git or was authored in Wharf.</p>
+  {{if .Registries}}
+  <table>
+    <thead><tr><th>Name</th><th>Type</th><th>Host</th><th>Username</th><th></th><th></th></tr></thead>
+    <tbody>
+      {{range .Registries}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td>{{.TypeLabel}}</td>
+        <td><code>{{.Host}}</code></td>
+        <td>{{.Username}}</td>
+        <td class="row-actions">
+          <button type="button" class="btn btn-ghost btn-sm registry-edit-btn" data-name="{{.Name}}" data-type="{{.Type}}" data-host="{{.Host}}" data-username="{{.Username}}">Edit</button>
+        </td>
+        <td class="row-actions">
+          <form method="post" action="/settings/registries/{{.Host}}/delete" class="inline-form delete-registry-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No private registry credentials configured — image checks and deploy-time pulls use anonymous/public access only.</p>
+  {{end}}
+
+  <h3 id="registry-form-title" style="margin-top:20px; font-size:14px;">Add a registry</h3>
+  <form method="post" action="/settings/registries" id="registry-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Name</label>
+      <input type="text" name="name" id="registry-name" placeholder="e.g. Company Docker Hub">
+    </div>
+    <div class="form-row">
+      <label>Type</label>
+      <select name="type" id="registry-type">
+        {{range .RegistryTypes}}
+        <option value="{{.Value}}" data-host-hint="{{.HostHint}}">{{.Label}}</option>
+        {{end}}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Host</label>
+      <input type="text" name="host" id="registry-host" required placeholder="e.g. docker.io, ghcr.io, registry.gitlab.com, myregistry.azurecr.io">
+    </div>
+    <div class="form-row">
+      <label>Username</label>
+      <input type="text" name="username" id="registry-username" required placeholder="e.g. your account username, or a service principal / app ID">
+    </div>
+    <div class="form-row">
+      <label>Password / token</label>
+      <input type="password" name="password" id="registry-password" required placeholder="a Personal Access Token, not your account password">
+    </div>
+    <p class="muted" style="font-size:12px;" id="registry-form-hint">Wharf can't mint this itself — create it on the registry first and paste it here. Only one credential per host: adding a new one for the same host replaces it.</p>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="registry-form-submit">Save</button>
+      <button type="button" class="btn btn-ghost" id="registry-form-cancel" hidden>Cancel</button>
+    </div>
+  </form>
+</section>
+<script>
+  (function () {
+    var typeSelect = document.getElementById('registry-type');
+    var hostInput = document.getElementById('registry-host');
+    if (!typeSelect || !hostInput) return;
+    typeSelect.addEventListener('change', function () {
+      var hint = typeSelect.options[typeSelect.selectedIndex].dataset.hostHint;
+      if (hint && !hostInput.value) hostInput.value = hint;
+    });
+
+    // Edit: fills the form below from the row's own data instead of a
+    // separate page -- host becomes read-only (it's the credential's
+    // key, cf. SetRegistryCredential; changing it would create a second
+    // entry rather than rename this one) and the password field goes
+    // from required to "leave blank to keep the current one", matching
+    // setRegistryCredentialHandler's own fallback.
+    var nameInput = document.getElementById('registry-name');
+    var usernameInput = document.getElementById('registry-username');
+    var passwordInput = document.getElementById('registry-password');
+    var formTitle = document.getElementById('registry-form-title');
+    var formHint = document.getElementById('registry-form-hint');
+    var submitBtn = document.getElementById('registry-form-submit');
+    var cancelBtn = document.getElementById('registry-form-cancel');
+    var defaultHint = formHint.textContent;
+
+    function resetForm() {
+      document.getElementById('registry-form').reset();
+      hostInput.readOnly = false;
+      passwordInput.required = true;
+      passwordInput.placeholder = 'a Personal Access Token, not your account password';
+      formTitle.textContent = 'Add a registry';
+      formHint.textContent = defaultHint;
+      submitBtn.textContent = 'Save';
+      cancelBtn.hidden = true;
+    }
+
+    document.querySelectorAll('.registry-edit-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        nameInput.value = btn.dataset.name;
+        typeSelect.value = btn.dataset.type;
+        hostInput.value = btn.dataset.host;
+        hostInput.readOnly = true;
+        usernameInput.value = btn.dataset.username;
+        passwordInput.value = '';
+        passwordInput.required = false;
+        passwordInput.placeholder = 'leave blank to keep the current credential';
+        formTitle.textContent = 'Edit ' + btn.dataset.name;
+        formHint.textContent = 'Leave the password blank to keep the one already stored. Host can\'t be changed here — remove and re-add to move a credential to a different host.';
+        submitBtn.textContent = 'Save changes';
+        cancelBtn.hidden = false;
+        document.getElementById('registry-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    });
+    cancelBtn.addEventListener('click', resetForm);
+  })();
+</script>
+{{end}}

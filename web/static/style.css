@@ -1,0 +1,482 @@
+:root {
+  --bg: #0f1720;
+  --bg-panel: #16212c;
+  --bg-elevated: #1c2b38;
+  --border: #253544;
+  --text: #dce6ef;
+  --text-muted: #7c8fa3;
+  --accent: #2dd4bf;
+  --accent-dim: #1b6f66;
+  --danger: #f27272;
+  --warn: #e0b34d;
+  --ok: #4ade80;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 20px 0;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 600;
+  padding: 0 20px 20px;
+  letter-spacing: 0.02em;
+}
+
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+
+.sidebar nav a {
+  color: var(--text-muted);
+  padding: 10px 20px;
+  font-weight: 500;
+}
+
+.sidebar nav a:hover { color: var(--text); text-decoration: none; background: var(--bg-elevated); }
+
+.sidebar nav a.active {
+  color: var(--text);
+  background: var(--bg-elevated);
+  border-right: 2px solid var(--accent);
+}
+
+.nav-section {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 10px 20px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.sidebar-footer { margin-top: auto; padding: 0 20px; display: flex; flex-direction: column; gap: 6px; }
+.sidebar-footer .version { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
+
+main { flex: 1; min-width: 0; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h1 { font-size: 20px; margin: 0; font-weight: 600; }
+
+.user-chip {
+  color: var(--text-muted);
+  font-size: 13px;
+  background: var(--bg-elevated);
+  padding: 6px 12px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.link-btn:hover { color: var(--text); }
+
+.content { padding: 28px 32px; }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 28px;
+}
+
+.stat-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+}
+
+.stat-value { font-size: 26px; font-weight: 700; }
+.stat-label { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.stat-hint { color: var(--warn); font-size: 12px; margin-top: 6px; }
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+  gap: 20px;
+}
+.chart-block { }
+.chart-block-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.chart-block-value { color: var(--text); font-weight: 600; }
+.chart-canvas {
+  width: 100%;
+  height: 80px;
+  display: block;
+  background: var(--bg-elevated);
+  border-radius: 6px;
+}
+.chart-axis-x {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 22px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+}
+
+.banner-error {
+  background: rgba(242, 114, 114, 0.12);
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  font-size: 13px;
+}
+
+.panel h2 { font-size: 15px; margin: 0 0 14px; font-weight: 600; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 8px; font-size: 13px; }
+thead th { color: var(--text-muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--bg-elevated); }
+
+.muted { color: var(--text-muted); }
+.center { text-align: center; }
+
+code {
+  font-family: var(--mono);
+  background: var(--bg-elevated);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.badge.mock { background: rgba(224, 179, 77, 0.15); color: var(--warn); text-transform: none; font-weight: 500; }
+
+.badge.status-succeeded, .badge.status-connected { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+.badge.status-failed, .badge.status-revoked { background: rgba(242, 114, 114, 0.15); color: var(--danger); }
+.badge.status-running, .badge.status-pending { background: rgba(224, 179, 77, 0.15); color: var(--warn); }
+.badge.status-disconnected, .badge.status-unknown, .badge.status-never { background: rgba(124, 143, 163, 0.15); color: var(--text-muted); }
+
+.badge.trigger-webhook { background: rgba(45, 212, 191, 0.15); color: var(--accent); }
+.badge.trigger-polling { background: rgba(224, 179, 77, 0.15); color: var(--warn); }
+.badge.trigger-manual { background: var(--bg-elevated); color: var(--text-muted); }
+
+/* États de ressources Docker (containers/images/volumes) — distincts des
+   badges status-* de déploiement pour ne pas mélanger les sémantiques
+   ("running" = sain pour un container, = en cours pour un déploiement). */
+.badge.state-running { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+.badge.state-restarting, .badge.state-removing { background: rgba(224, 179, 77, 0.15); color: var(--warn); }
+.badge.state-exited, .badge.state-created, .badge.state-paused { background: rgba(124, 143, 163, 0.15); color: var(--text-muted); }
+.badge.state-dead { background: rgba(242, 114, 114, 0.15); color: var(--danger); }
+
+.badge.secret-badge { background: rgba(224, 179, 77, 0.15); color: var(--warn); margin-left: 8px; text-transform: none; }
+.secret-value { font-family: var(--mono); color: var(--text-muted); letter-spacing: 2px; }
+
+/* One consistent look for every <select> in the app, closed control and
+   all -- previously only .host-filter/.usage-filter/.form-row select
+   were themed, so a plain <select> anywhere else (the role dropdown on
+   Users, the image-policy dropdown on a stack) fell back to the
+   browser's own native control: a stark white box with a native arrow,
+   right in the middle of an otherwise dark row -- the "bruyant" (noisy)
+   look reported in practice. appearance:none drops that native chrome
+   so the CSS chevron below is the only arrow drawn, on a background
+   that actually matches the rest of the UI. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 30px 8px 12px;
+  font-size: 13px;
+  font-family: var(--font);
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5l3.5 3.5 3.5-3.5' stroke='%237c8fa3' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 11px;
+}
+select:focus { outline: none; border-color: var(--accent); }
+select:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Chromium/Edge mostly respect these on the open listbox too; Firefox
+   and Safari only partially do -- no CSS fully themes the native popup
+   across browsers, but this keeps it from defaulting to pure white
+   wherever the browser does honor it. */
+option { background-color: var(--bg-elevated); color: var(--text); }
+
+.toolbar { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+.toolbar-split { justify-content: space-between; align-items: center; }
+.host-filter { width: auto; }
+.filter-group { display: flex; align-items: center; gap: 8px; }
+.search-filter { width: 220px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; font-size: 13px; }
+.search-filter:focus { outline: none; border-color: var(--accent); }
+.address-input { width: 160px; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 13px; }
+.address-input:focus { outline: none; border-color: var(--accent); }
+.usage-filter { width: auto; }
+.switch-filter { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-muted); cursor: pointer; user-select: none; }
+.switch { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch-track { position: absolute; inset: 0; background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 999px; transition: background 0.15s, border-color 0.15s; }
+.switch-track::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform 0.15s, background 0.15s;
+}
+.switch input:checked + .switch-track { background: var(--accent-dim); border-color: var(--accent); }
+.switch input:checked + .switch-track::before { transform: translateX(16px); background: var(--accent); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.sortable-col { cursor: pointer; user-select: none; position: relative; padding-right: 16px !important; }
+.sortable-col:hover { color: var(--text); }
+.sortable-col::after { content: '⇅'; position: absolute; right: 2px; opacity: 0.35; font-size: 11px; }
+.sortable-col.sorted-asc::after { content: '↑'; opacity: 1; color: var(--accent); }
+.sortable-col.sorted-desc::after { content: '↓'; opacity: 1; color: var(--accent); }
+
+.row-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+
+.kv-table td, .kv-table th { border-bottom: 1px solid var(--border); }
+.kv-table th { width: 160px; color: var(--text-muted); font-weight: 500; }
+.kv-table tr:last-child td, .kv-table tr:last-child th { border-bottom: none; }
+
+.logs-box pre { color: #9fb3c8; max-height: 280px; overflow-y: auto; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  color: var(--text);
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn:hover { border-color: var(--accent); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--border); }
+
+.btn-primary { background: var(--accent-dim); border-color: var(--accent); color: #eafffb; }
+.btn-ghost { background: transparent; }
+.btn-block { width: 100%; justify-content: center; }
+
+.btn-loading { cursor: wait; opacity: 0.75; }
+.btn-loading::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: wharf-spin 0.6s linear infinite;
+}
+@keyframes wharf-spin { to { transform: rotate(360deg); } }
+
+/* Same "this is happening" intent as .btn-loading, for an auto-submit
+   select with no button of its own -- opacity/cursor only, never
+   :disabled (cf. layout.html's submit listener for why). */
+.select-busy { cursor: wait; opacity: 0.6; }
+
+.spinner-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: var(--warn);
+  animation: wharf-pulse 1s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes wharf-pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+.wharf-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.25s, transform 0.25s;
+  z-index: 1000;
+  max-width: 360px;
+}
+.wharf-toast.visible { opacity: 1; transform: translateY(0); }
+.wharf-toast-success { border-color: var(--ok); }
+.wharf-toast-error { border-color: var(--danger); }
+
+.pending-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-elevated);
+  border: 1px solid var(--warn);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.pending-host { font-weight: 600; }
+.fingerprint { font-family: var(--mono); font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+.pending-actions { display: flex; gap: 8px; }
+
+.code-box {
+  position: relative;
+  background: #0a1119;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 10px;
+}
+
+.code-box pre {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #a8f0e6;
+  padding-right: 80px;
+}
+
+.code-box .copy-btn { position: absolute; top: 12px; right: 12px; padding: 5px 12px; font-size: 12px; }
+
+.form { max-width: 620px; }
+.form-row { margin-bottom: 16px; }
+.form-row label { display: block; font-size: 13px; margin-bottom: 6px; color: var(--text-muted); }
+.form-row input[type=text], .form-row input[type=password], .form-row textarea {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+/* Not grouped with the inputs above: select's own right padding needs
+   room for the chevron (cf. the global "select" rule) that a shared
+   "padding: 9px 12px" would clobber. */
+.form-row select { width: 100%; }
+.form-row textarea { font-family: var(--mono); font-size: 13px; resize: vertical; }
+.form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); }
+fieldset.form-row { border: none; padding: 0; }
+fieldset legend { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; padding: 0; }
+.radio { display: inline-flex; align-items: center; gap: 6px; margin-right: 18px; font-size: 13px; font-weight: 400; color: var(--text); }
+
+.key-preview { margin-top: 20px; margin-bottom: 20px; }
+.form-actions { display: flex; align-items: center; gap: 14px; margin-top: 24px; }
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 20%, #16212c, #0f1720 60%);
+}
+
+.login-card {
+  width: 340px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.login-card .brand { text-align: center; padding: 0 0 24px; font-size: 22px; }
+
+.form-error {
+  background: rgba(242, 114, 114, 0.12);
+  color: var(--danger);
+  border: 1px solid rgba(242, 114, 114, 0.35);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+.divider {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 16px 0;
+  position: relative;
+}

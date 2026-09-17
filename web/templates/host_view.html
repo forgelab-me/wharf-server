@@ -1,0 +1,129 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Overview</h2>
+  <table class="kv-table">
+    <tr><th>Name</th><td>
+      <form method="post" action="/hosts/{{.Host.ID}}/name" class="inline-form" style="display:flex; gap:6px;">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="text" name="name" value="{{.Host.Name}}" required class="address-input">
+        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+      </form>
+    </td></tr>
+    <tr><th>Status</th><td><span class="badge status-{{.Host.Status}}">{{.Host.Status}}</span></td></tr>
+    <tr><th>Fingerprint</th><td class="muted"><code>{{.Host.CertFingerprint}}</code></td></tr>
+    <tr><th>Last seen</th><td class="muted">{{.Host.LastSeenAt}}</td></tr>
+    <tr><th>Address</th><td>
+      <form method="post" action="/hosts/{{.Host.ID}}/address" class="inline-form" style="display:flex; gap:6px;">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="text" name="address" value="{{.Host.Address}}" placeholder="e.g. 192.168.1.50" class="address-input">
+        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+      </form>
+    </td></tr>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Resources</h2>
+  {{if .Connected}}
+  <div class="chart-grid">
+    <div class="chart-block">
+      <div class="chart-block-header"><span>CPU (containers)</span><span class="chart-block-value" id="res-cpu-value">—</span></div>
+      <canvas class="chart-canvas" id="res-cpu-chart" width="600" height="80"></canvas>
+    </div>
+    <div class="chart-block">
+      <div class="chart-block-header"><span>Memory (containers)</span><span class="chart-block-value" id="res-mem-value">—</span></div>
+      <canvas class="chart-canvas" id="res-mem-chart" width="600" height="80"></canvas>
+    </div>
+    <div class="chart-block">
+      <div class="chart-block-header"><span>Network (aggregate)</span><span class="chart-block-value" id="res-net-value">—</span></div>
+      <canvas class="chart-canvas" id="res-net-chart" width="600" height="80"></canvas>
+    </div>
+    <div class="chart-block">
+      <div class="chart-block-header"><span>Disk I/O (aggregate)</span><span class="chart-block-value" id="res-io-value">—</span></div>
+      <canvas class="chart-canvas" id="res-io-chart" width="600" height="80"></canvas>
+    </div>
+  </div>
+  <p class="muted" style="font-size:12px; margin-top:10px;">Summed across every container on this host — the agent only has docker.sock, not the host's own /proc, so this is "everything Docker is running here," not the whole machine. Live only while this page is open, no history kept. Network/IO are per-tick totals since each container started, not a rate — expect them to only ever climb.</p>
+
+  <h3 style="margin-top:20px; font-size:14px;">Disk (Docker's own footprint)</h3>
+  <table id="res-disk-table">
+    <thead><tr><th>Type</th><th>Count</th><th>Size</th><th>Reclaimable</th></tr></thead>
+    <tbody><tr><td colspan="4" class="muted">Loading…</td></tr></tbody>
+  </table>
+
+  <script>
+    // Deferred to DOMContentLoaded: this script tag renders inside
+    // layout.html's <div class="content">, before the shared <script>
+    // block (bottom of <body>) that defines window.wharfLiveChart --
+    // running immediately would hit it before it exists.
+    document.addEventListener('DOMContentLoaded', function () {
+      var cpuChart = document.getElementById('res-cpu-chart');
+      var memChart = document.getElementById('res-mem-chart');
+      var netChart = document.getElementById('res-net-chart');
+      var ioChart = document.getElementById('res-io-chart');
+      var diskBody = document.querySelector('#res-disk-table tbody');
+      if (!cpuChart || !memChart) return;
+      var rootStyle = getComputedStyle(document.documentElement);
+      var accent = rootStyle.getPropertyValue('--accent');
+      var warn = rootStyle.getPropertyValue('--warn');
+      var ok = rootStyle.getPropertyValue('--ok');
+      var danger = rootStyle.getPropertyValue('--danger');
+
+      wharfLiveChart(cpuChart, {
+        fetchUrl: '/hosts/{{.Host.ID}}/stats',
+        series: [{ key: 'cpuPercent', color: accent }],
+        unit: '%',
+        onData: function (json) {
+          var cores = json.cpuCores ? ' of ' + (json.cpuCores * 100) + '% (' + json.cpuCores + ' cores)' : '';
+          document.getElementById('res-cpu-value').textContent = json.cpuPercent.toFixed(1) + '%' + cores + ' across ' + json.containerCount + ' container(s)';
+        },
+        onError: function () {
+          document.getElementById('res-cpu-value').textContent = '—';
+        }
+      });
+      wharfLiveChart(memChart, {
+        fetchUrl: '/hosts/{{.Host.ID}}/stats',
+        series: [{ key: 'memUsedMiB', color: warn }],
+        unit: ' MiB',
+        onData: function (json) {
+          var pct = json.memTotalMiB ? ' (' + json.memPercentOfHost.toFixed(1) + '%)' : '';
+          document.getElementById('res-mem-value').textContent = json.memUsedDisplay + ' / ' + json.memTotalDisplay + pct;
+          if (diskBody && json.disk && json.disk.length) {
+            diskBody.innerHTML = json.disk.map(function (d) {
+              return '<tr><td>' + d.type + '</td><td class="muted">' + d.count + '</td><td>' + d.size + '</td><td class="muted">' + d.reclaimable + '</td></tr>';
+            }).join('');
+          }
+        },
+        onError: function () {
+          document.getElementById('res-mem-value').textContent = '—';
+        }
+      });
+      wharfLiveChart(netChart, {
+        fetchUrl: '/hosts/{{.Host.ID}}/stats',
+        series: [{ key: 'netRxMiB', color: accent }, { key: 'netTxMiB', color: ok }],
+        unit: ' MiB',
+        onData: function (json) {
+          document.getElementById('res-net-value').textContent = '↓' + json.netRxMiB.toFixed(1) + ' MiB  ↑' + json.netTxMiB.toFixed(1) + ' MiB';
+        },
+        onError: function () {
+          document.getElementById('res-net-value').textContent = '—';
+        }
+      });
+      wharfLiveChart(ioChart, {
+        fetchUrl: '/hosts/{{.Host.ID}}/stats',
+        series: [{ key: 'blockReadMiB', color: warn }, { key: 'blockWriteMiB', color: danger }],
+        unit: ' MiB',
+        onData: function (json) {
+          document.getElementById('res-io-value').textContent = 'R ' + json.blockReadMiB.toFixed(1) + ' MiB  W ' + json.blockWriteMiB.toFixed(1) + ' MiB';
+        },
+        onError: function () {
+          document.getElementById('res-io-value').textContent = '—';
+        }
+      });
+    });
+  </script>
+  {{else}}
+  <p class="muted">Not available right now — this host's agent isn't currently connected. Reload once it reconnects.</p>
+  {{end}}
+</section>
+{{end}}

@@ -1,0 +1,54 @@
+{{define "content"}}
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <select class="host-filter">
+      <option>All hosts</option>
+      {{range .Hosts}}<option>{{.Name}}</option>{{end}}
+    </select>
+    <input type="search" class="search-filter" placeholder="Search containers...">
+    <label class="switch-filter"><span class="switch"><input type="checkbox" class="running-only-filter"><span class="switch-track"></span></span> Only running</label>
+    <label class="switch-filter"><span class="switch"><input type="checkbox" class="managed-only-filter"><span class="switch-track"></span></span> My stacks only</label>
+  </div>
+  <div></div>
+</div>
+<div class="panel">
+  {{if .Containers}}
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Image</th><th>Host</th><th>Stack</th><th>Status</th><th>Ports</th><th>Created</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .Containers}}
+      <tr data-host="{{.Host}}" data-state="{{.State}}" data-managed="{{if .Stack}}true{{else}}false{{end}}">
+        <td><a href="/containers/{{.ID}}">{{.Name}}</a></td>
+        <td>
+          <code>{{.ImageDisplay}}</code>
+          {{if eq .UpdateStatus "current"}}<span class="badge status-succeeded">up to date</span>{{end}}
+          {{if eq .UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
+        </td>
+        <td>{{.Host}}</td>
+        <td>{{if .Stack}}<a href="/stacks/{{.Stack}}">{{.Stack}}</a>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td><span class="badge state-{{.State}}">{{.Status}}</span></td>
+        <td class="muted">
+          {{range $i, $p := .Ports}}{{if $i}}, {{end}}{{if $p.URL}}<a href="{{$p.URL}}" target="_blank" rel="noopener">{{$p.Text}}</a>{{else}}{{$p.Text}}{{end}}{{end}}
+        </td>
+        <td class="muted">{{.Created}}</td>
+        <td class="row-actions">
+          <form method="post" action="/containers/{{.ID}}/restart" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Restart</button>
+          </form>
+          <form method="post" action="/containers/{{.ID}}/stop" class="inline-form stop-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Stop</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No containers on any connected host yet.</p>
+  {{end}}
+</div>
+{{end}}

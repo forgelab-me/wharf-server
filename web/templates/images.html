@@ -1,0 +1,52 @@
+{{define "content"}}
+<form method="post" action="/images/delete" class="bulk-form">
+<input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <select class="host-filter">
+      <option>All hosts</option>
+      {{range .Hosts}}<option>{{.Name}}</option>{{end}}
+    </select>
+    <input type="search" class="search-filter" placeholder="Search images...">
+    <select class="usage-filter">
+      <option value="">All</option>
+      <option value="used">In use</option>
+      <option value="unused">Unused</option>
+    </select>
+  </div>
+  {{if eq .Role "admin"}}
+  <div class="filter-group">
+    <button type="button" class="btn btn-ghost clean-unused-btn">Clean up unused images</button>
+    <button type="submit" class="btn btn-ghost delete-selected-btn" disabled>Delete selected</button>
+  </div>
+  {{end}}
+</div>
+<div class="panel">
+  {{if .Images}}
+  <table>
+    <thead>
+      <tr>
+        {{if eq .Role "admin"}}<th><input type="checkbox" class="select-all"></th>{{end}}
+        <th>Repository</th><th>Tag</th><th>ID</th><th>Host</th><th>Size</th><th>Used by</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{range .Images}}
+      <tr data-host="{{.Host}}" data-used="{{if .UsedBy}}true{{else}}false{{end}}">
+        {{if eq $.Role "admin"}}<td><input type="checkbox" class="row-check" name="ids" value="{{.HostID}}|{{.ID}}"></td>{{end}}
+        <td><a href="/images/{{.HostID}}/{{.ID}}">{{.Repo}}</a></td>
+        <td><code>{{.Tag}}</code></td>
+        <td class="muted"><code>{{.ID}}</code></td>
+        <td>{{.Host}}</td>
+        <td class="muted">{{.Size}}</td>
+        <td>{{if .UsedBy}}{{.UsedBy}}{{else}}<span class="badge state-exited">unused</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No images on any connected host yet.</p>
+  {{end}}
+</div>
+</form>
+{{end}}

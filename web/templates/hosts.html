@@ -1,0 +1,75 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Pending approval</h2>
+  {{if .Pending}}
+    {{range .Pending}}
+    <div class="pending-card">
+      <div>
+        <div class="pending-host">{{.Name}}</div>
+        <div class="fingerprint">{{.CertFingerprint}}</div>
+        <div class="muted" style="font-size:12px; margin-top:4px;">last seen {{.LastSeenAt}}</div>
+      </div>
+      <div class="pending-actions">
+        <form method="post" action="/hosts/{{.ID}}/approve">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button class="btn btn-primary" type="submit">Approve</button>
+        </form>
+        <form method="post" action="/hosts/{{.ID}}/reject" class="inline-form reject-host-form">
+          <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+          <button class="btn btn-ghost" type="submit">Reject</button>
+        </form>
+      </div>
+    </div>
+    {{end}}
+  {{else}}
+    <p class="muted">No agent pending.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Connected hosts</h2>
+  {{if .Connected}}
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Status</th><th>Fingerprint</th><th>Last seen</th><th>Address</th></tr>
+    </thead>
+    <tbody>
+      {{range .Connected}}
+      <tr>
+        <td><a href="/hosts/{{.ID}}">{{.Name}}</a></td>
+        <td><span class="badge status-connected">{{.Status}}</span></td>
+        <td class="muted"><code>{{.CertFingerprint}}</code></td>
+        <td class="muted">{{.LastSeenAt}}</td>
+        <td>
+          <form method="post" action="/hosts/{{.ID}}/address" class="inline-form" style="display:flex; gap:6px;">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <input type="text" name="address" value="{{.Address}}" placeholder="e.g. 192.168.1.50" class="address-input">
+            <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No host connected yet.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Add an agent</h2>
+  <p class="muted">Copy this command onto the target host — the controller's fingerprint is already filled in. The agent will show up above as pending approval as soon as it connects for the first time.</p>
+  <div class="code-box">
+    <pre id="docker-run-cmd">docker run -d \
+  --name wharf-agent \
+  --restart unless-stopped \
+  -v /var/run/docker.sock:/var/run/docker.sock \
+  -v /opt/wharf-agent/identity:/var/lib/wharf-agent/identity \
+  -v /opt/wharf-agent/stacks:/opt/wharf-agent/stacks \
+  ghcr.io/forgelab-me/wharf-agent:latest \
+  --controller={{.ControllerAddr}} \
+  --controller-fingerprint={{.ControllerFingerprint}}</pre>
+    <button class="btn btn-ghost copy-btn" data-copy-target="docker-run-cmd">Copy</button>
+  </div>
+</section>
+{{end}}

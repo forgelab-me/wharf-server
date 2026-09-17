@@ -1,0 +1,535 @@
+{{define "layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · Wharf</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">⚓ Wharf</div>
+      <nav>
+        <a href="/" class="{{if eq .Nav "dashboard"}}active{{end}}">Dashboard</a>
+        <div class="nav-section">GitOps</div>
+        <a href="/stacks" class="{{if eq .Nav "stacks"}}active{{end}}">Stacks</a>
+        <a href="/hosts" class="{{if eq .Nav "hosts"}}active{{end}}">Hosts</a>
+        <div class="nav-section">Docker Resources</div>
+        <a href="/containers" class="{{if eq .Nav "containers"}}active{{end}}">Containers</a>
+        <a href="/images" class="{{if eq .Nav "images"}}active{{end}}">Images</a>
+        <a href="/volumes" class="{{if eq .Nav "volumes"}}active{{end}}">Volumes</a>
+        <a href="/networks" class="{{if eq .Nav "networks"}}active{{end}}">Networks</a>
+        {{if eq .Role "admin"}}
+        <div class="nav-section">Settings</div>
+        <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
+        <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
+        <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
+        <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
+        {{end}}
+      </nav>
+      <div class="sidebar-footer">
+        {{if .Mock}}<span class="badge mock">Preview — sample data</span>{{end}}
+        <span class="version">{{.Version}}</span>
+      </div>
+    </aside>
+    <main>
+      <header class="topbar">
+        <h1>{{.Title}}</h1>
+        <div class="user-chip">
+          {{.Username}} · {{.Role}}
+          <a href="/change-password" class="link-btn">Change password</a>
+          <form method="post" action="/logout" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+            <button type="submit" class="link-btn">Sign out</button>
+          </form>
+        </div>
+      </header>
+      <div class="content">
+        {{if .Error}}<div class="banner-error">{{.Error}}</div>{{end}}
+        {{template "content" .}}
+      </div>
+    </main>
+  </div>
+  <script>
+    // showToast / the sessionStorage handoff below it exist because a
+    // real action's completion (a deployment finishing after its own
+    // page reload triggered by a poll, cf. stack_view.html) has nothing
+    // left on the page that requested it to show a message on -- the
+    // next page load is a fresh request with no memory of why it
+    // happened. sessionStorage bridges exactly that one reload, nothing
+    // more: written right before location.reload(), read and cleared on
+    // the very next DOMContentLoaded, never left sitting around.
+    function showToast(message, type) {
+      var el = document.createElement('div');
+      el.className = 'wharf-toast wharf-toast-' + (type || 'success');
+      el.textContent = message;
+      document.body.appendChild(el);
+      requestAnimationFrame(function () { el.classList.add('visible'); });
+      setTimeout(function () {
+        el.classList.remove('visible');
+        setTimeout(function () { el.remove(); }, 300);
+      }, 4000);
+    }
+    window.showToast = showToast;
+    (function () {
+      var raw = sessionStorage.getItem('wharf-toast');
+      if (!raw) return;
+      sessionStorage.removeItem('wharf-toast');
+      try {
+        var data = JSON.parse(raw);
+        showToast(data.message, data.type);
+      } catch (e) { /* malformed or stale -- silently drop */ }
+    })();
+    {{if .Saved}}
+    // Same one-shot idea as the sessionStorage bridge above, for a save
+    // whose result isn't otherwise obvious on the page it redirected
+    // back to (cf. redirectWithSaved/render's Saved auto-injection) --
+    // ?saved=1 is stripped right after so a manual reload of this exact
+    // URL doesn't show the toast again for a stale bookmark/history entry.
+    showToast('Saved', 'success');
+    (function () {
+      var url = new URL(location.href);
+      url.searchParams.delete('saved');
+      window.history.replaceState({}, '', url);
+    })();
+    {{end}}
+
+    // Generic "this is happening" feedback for every form in the app --
+    // disables the submit button and shows a spinner the instant a
+    // submit actually proceeds (a cancelled confirm() dialog never
+    // fires this, since the submit event itself never fires). Covers
+    // every action site-wide from one place rather than each page
+    // wiring its own busy state.
+    document.addEventListener('submit', function (e) {
+      // A cancelled confirm() dialog (cf. the .stop-form/.delete-stack-form/
+      // etc. handlers below) calls preventDefault on this same event
+      // before it bubbles here -- checked first so cancelling one never
+      // leaves its button stuck disabled with no submit left to re-enable it.
+      if (e.defaultPrevented) return;
+      var btn = e.target.querySelector('button[type="submit"]');
+      if (btn && !btn.disabled) {
+        btn.disabled = true;
+        btn.classList.add('btn-loading');
+      }
+      // A <select onchange="this.form.requestSubmit()"> (role, image
+      // policy) has no submit button to disable -- and setting the
+      // select itself to .disabled here would strip its own value from
+      // the request being submitted (disabled controls are dropped from
+      // the entry list even mid-submit, verified directly rather than
+      // assumed), silently sending the change as empty. A CSS-only busy
+      // class gives the same "this is happening" feedback without
+      // touching what's actually sent.
+      e.target.querySelectorAll('select').forEach(function (s) {
+        s.classList.add('select-busy');
+      });
+    });
+
+    // Logs read newest-at-the-bottom, same as a terminal -- scrolled to
+    // the end on load so the most recent lines are what's actually
+    // visible, instead of the oldest ones from whenever the container
+    // started.
+    document.querySelectorAll('.logs-box pre').forEach(function (pre) {
+      pre.scrollTop = pre.scrollHeight;
+    });
+
+    document.querySelectorAll('.copy-btn').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = document.getElementById(btn.dataset.copyTarget);
+        if (!target) return;
+        navigator.clipboard.writeText(target.textContent.trim()).then(function () {
+          var original = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(function () { btn.textContent = original; }, 1500);
+        });
+      });
+    });
+
+    // Generic table filter for the Docker Resources pages (Containers,
+    // Images, Volumes, Networks) -- a no-op wherever a page has neither
+    // control, so this stays in the shared layout script instead of
+    // being duplicated per page. running-only-filter (Containers) and
+    // usage-filter (Images/Volumes/Networks) are optional on top of the
+    // host/search filters every one of these pages already has.
+    (function () {
+      var hostFilter = document.querySelector('.host-filter');
+      var searchFilter = document.querySelector('.search-filter');
+      var runningFilter = document.querySelector('.running-only-filter');
+      var usageFilter = document.querySelector('.usage-filter');
+      var managedFilter = document.querySelector('.managed-only-filter');
+      var rows = document.querySelectorAll('table tbody tr[data-host]');
+      if (!rows.length || (!hostFilter && !searchFilter && !runningFilter && !usageFilter && !managedFilter)) return;
+
+      function apply() {
+        var host = hostFilter ? hostFilter.value : '';
+        var search = searchFilter ? searchFilter.value.trim().toLowerCase() : '';
+        var runningOnly = runningFilter ? runningFilter.checked : false;
+        var usage = usageFilter ? usageFilter.value : '';
+        var managedOnly = managedFilter ? managedFilter.checked : false;
+        rows.forEach(function (row) {
+          var matchesHost = !host || host === 'All hosts' || row.dataset.host === host;
+          var matchesSearch = !search || row.textContent.toLowerCase().indexOf(search) !== -1;
+          var matchesRunning = !runningOnly || row.dataset.state === 'running';
+          var matchesUsage = !usage || (usage === 'used') === (row.dataset.used === 'true');
+          var matchesManaged = !managedOnly || row.dataset.managed === 'true';
+          row.hidden = !(matchesHost && matchesSearch && matchesRunning && matchesUsage && matchesManaged);
+        });
+      }
+      if (hostFilter) hostFilter.addEventListener('change', apply);
+      if (searchFilter) searchFilter.addEventListener('input', apply);
+      if (runningFilter) runningFilter.addEventListener('change', apply);
+      if (usageFilter) usageFilter.addEventListener('change', apply);
+      if (managedFilter) managedFilter.addEventListener('change', apply);
+    })();
+
+    // Sortable columns, same Docker Resources tables as the filter above
+    // (scoped the same way, via data-host rows) -- click a header to
+    // sort by that column's text, click again to reverse. Numeric-looking
+    // columns (sizes, dates) sort numerically where possible rather than
+    // lexicographically ("2" before "10"); a human-readable byte size
+    // ("313.4kB" vs "2.39GB") is normalized to a byte count first --
+    // found sorting Volumes' Size column, where a plain numeric-prefix
+    // parse compared "313.4" against "2.39" and got it backwards because
+    // it never looked at the unit at all.
+    function parseByteSize(s) {
+      var m = /^([\d.]+)\s*([a-zA-Z]+)$/.exec(s);
+      if (!m) return null;
+      var factors = {
+        b: 1,
+        kb: 1e3, mb: 1e6, gb: 1e9, tb: 1e12, pb: 1e15,
+        kib: 1024, mib: 1024 * 1024, gib: 1024 * 1024 * 1024, tib: 1024 * 1024 * 1024 * 1024
+      };
+      var factor = factors[m[2].toLowerCase()];
+      if (factor === undefined) return null;
+      return parseFloat(m[1]) * factor;
+    }
+    (function () {
+      var firstRow = document.querySelector('table tbody tr[data-host]');
+      var table = firstRow ? firstRow.closest('table') : null;
+      if (!table) return;
+      var tbody = table.querySelector('tbody');
+      var headers = table.querySelectorAll('thead th');
+      headers.forEach(function (th, colIndex) {
+        if (!th.textContent.trim()) return; // empty header = actions column, not sortable
+        th.classList.add('sortable-col');
+        var dir = null;
+        th.addEventListener('click', function () {
+          dir = dir === 'asc' ? 'desc' : 'asc';
+          headers.forEach(function (h) { h.classList.remove('sorted-asc', 'sorted-desc'); });
+          th.classList.add(dir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+          var sortRows = Array.prototype.slice.call(tbody.querySelectorAll('tr'));
+          sortRows.sort(function (a, b) {
+            var av = (a.children[colIndex] ? a.children[colIndex].textContent : '').trim();
+            var bv = (b.children[colIndex] ? b.children[colIndex].textContent : '').trim();
+            var aSize = parseByteSize(av), bSize = parseByteSize(bv);
+            var an = parseFloat(av), bn = parseFloat(bv);
+            var cmp;
+            if (aSize !== null && bSize !== null) {
+              cmp = aSize - bSize;
+            } else if (!isNaN(an) && !isNaN(bn) && /^-?[\d.]/.test(av) && /^-?[\d.]/.test(bv)) {
+              cmp = an - bn;
+            } else {
+              cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: 'base' });
+            }
+            return dir === 'asc' ? cmp : -cmp;
+          });
+          sortRows.forEach(function (r) { tbody.appendChild(r); });
+        });
+      });
+    })();
+
+    // Generic bulk-select/delete for Docker Resources pages (Images,
+    // Volumes, Networks) -- a no-op wherever a page has no .bulk-form.
+    // "Clean up unused" just checks every currently-visible row whose
+    // data-used is "false" (the same flag the usage-filter above already
+    // reads) and submits the same form the checkboxes do, so there's one
+    // delete code path instead of a separate prune endpoint that could
+    // drift from what the table actually shows as unused.
+    (function () {
+      var form = document.querySelector('.bulk-form');
+      if (!form) return;
+      var selectAll = form.querySelector('.select-all');
+      var deleteBtn = form.querySelector('.delete-selected-btn');
+      var cleanBtn = form.querySelector('.clean-unused-btn');
+      function checks() { return Array.prototype.slice.call(form.querySelectorAll('.row-check')); }
+      function visible(c) { var tr = c.closest('tr'); return !!tr && !tr.hidden; }
+      function updateDeleteState() {
+        if (!deleteBtn) return;
+        deleteBtn.disabled = !checks().some(function (c) { return c.checked && visible(c); });
+      }
+      checks().forEach(function (c) { c.addEventListener('change', updateDeleteState); });
+      if (selectAll) {
+        selectAll.addEventListener('change', function () {
+          checks().forEach(function (c) { if (visible(c)) c.checked = selectAll.checked; });
+          updateDeleteState();
+        });
+      }
+      form.addEventListener('submit', function (e) {
+        var n = checks().filter(function (c) { return c.checked; }).length;
+        if (n === 0 || !confirm('Delete ' + n + ' selected item(s)? This can\'t be undone.')) {
+          e.preventDefault();
+        }
+      });
+      if (cleanBtn) {
+        cleanBtn.addEventListener('click', function () {
+          var unused = checks().filter(function (c) { return visible(c) && c.closest('tr').dataset.used === 'false'; });
+          if (!unused.length) {
+            alert('Nothing unused to clean up.');
+            return;
+          }
+          checks().forEach(function (c) { c.checked = unused.indexOf(c) !== -1; });
+          if (selectAll) selectAll.checked = false;
+          form.requestSubmit();
+        });
+      }
+      updateDeleteState();
+    })();
+
+    // After a bulk delete on Images/Volumes/Networks, the redirect back
+    // here (?refreshing=1, cf. deleteImagesHandler et al.) routinely
+    // lands before the deleted item is actually gone from this page:
+    // the docker rmi/volume rm/network rm already succeeded, but this
+    // table is only ever as fresh as the agent's last snapshot push,
+    // which is debounced (~300ms) and arrives over a separate channel
+    // this redirect doesn't wait for -- without this, the row just sits
+    // there until a manual reload. Polls this same page's own HTML
+    // (nothing dedicated to ask "is the snapshot fresh yet") until the
+    // row count actually drops or a few seconds pass, then reloads for
+    // real -- a full reload rather than patching the table in place, so
+    // every other script here (filters, sorting, the bulk-form listeners
+    // above) just re-runs fresh instead of needing to be re-wired against
+    // swapped-in rows.
+    (function () {
+      if (!/(^|[?&])refreshing=1(&|$)/.test(location.search)) return;
+      var form = document.querySelector('.bulk-form');
+      var tbody = form && form.querySelector('table tbody');
+      if (!tbody) return;
+      var initialCount = tbody.querySelectorAll('tr').length;
+      var indicator = document.createElement('span');
+      indicator.className = 'muted';
+      indicator.style.marginLeft = '10px';
+      indicator.innerHTML = 'Refreshing<span class="spinner-dot" title="in progress"></span>';
+      var toolbar = document.querySelector('.toolbar');
+      if (toolbar) toolbar.appendChild(indicator);
+
+      var attempts = 0;
+      function poll() {
+        attempts++;
+        fetch(location.pathname).then(function (r) { return r.text(); }).then(function (html) {
+          var freshTbody = new DOMParser().parseFromString(html, 'text/html').querySelector('.bulk-form table tbody');
+          var freshCount = freshTbody ? freshTbody.querySelectorAll('tr').length : initialCount;
+          if (freshCount !== initialCount || attempts >= 8) {
+            location.replace(location.pathname);
+            return;
+          }
+          setTimeout(poll, 500);
+        }).catch(function () {
+          if (indicator.parentNode) indicator.remove();
+        });
+      }
+      setTimeout(poll, 500);
+    })();
+
+    // Confirm before a disruptive action -- generic like the filter
+    // above, a no-op on pages with no .stop-form. Mirrors the single
+    // #undeploy-form confirm on the stack page, generalized to a class
+    // since a resource list can have many stop buttons on one page.
+    document.querySelectorAll('.stop-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Stop this container?')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.delete-stack-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Delete this stack permanently? This removes its deployment history and keys — undeploy first if it might still be running.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.clear-secrets-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Remove all secrets from this stack? A running deployment keeps them until redeployed; a future deploy will run without them.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.delete-user-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Delete this user? Their sessions end immediately and this can\'t be undone.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.regenerate-key-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Regenerate this connection\'s SSH key? The current public key stops working immediately -- you will need to paste the new one as a Deploy Key everywhere the old one was.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.reject-host-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Reject this agent? It can enroll again later if it retries.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.delete-registry-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Remove this registry credential? Any image check or deploy-time pull that needs it will fall back to anonymous/public access.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.delete-oidc-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Remove the SSO configuration? /login will only offer local username/password afterward.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.delete-git-connection-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Delete this Git connection permanently? Its stored key/credential is removed too.')) {
+          e.preventDefault();
+        }
+      });
+    });
+
+    // wharfLiveChart: a tiny rolling line chart with no library, for the
+    // container/host Resources panels (cf. server/stats.go). Polls
+    // fetchUrl on its own, draws whichever series come back, and stops
+    // cleanly on fetch failure rather than filling the chart with zeros
+    // -- a disconnected host's chart just stops advancing, which reads
+    // as "nothing new" rather than "usage dropped to 0". No history: a
+    // reload starts the window over, same as Portainer's own live
+    // stats -- nothing here is meant to answer "what happened an hour
+    // ago".
+    // formatAxisValue: no unit-aware formatting library, just enough
+    // precision to be readable at the two scales these charts actually
+    // see (0-100 percentages, low-thousands MiB) without a string like
+    // "26.219999999999999" ever reaching the canvas.
+    function formatAxisValue(v) {
+      if (v >= 100) return String(Math.round(v));
+      if (v >= 10) return v.toFixed(1);
+      return v.toFixed(2);
+    }
+
+    // drawSmoothCurve: Catmull-Rom control points converted to cubic
+    // beziers -- a real curve through every sampled point, not a
+    // decorative smoothing that drifts from the data. Falls back to a
+    // straight segment for exactly two points, where a curve has nothing
+    // to bend around anyway.
+    function drawSmoothCurve(ctx, points, color) {
+      if (points.length < 2) return;
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.moveTo(points[0].x, points[0].y);
+      if (points.length === 2) {
+        ctx.lineTo(points[1].x, points[1].y);
+      } else {
+        for (var i = 0; i < points.length - 1; i++) {
+          var p0 = points[i === 0 ? 0 : i - 1];
+          var p1 = points[i];
+          var p2 = points[i + 1];
+          var p3 = points[i + 2 < points.length ? i + 2 : i + 1];
+          ctx.bezierCurveTo(
+            p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
+            p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
+            p2.x, p2.y
+          );
+        }
+      }
+      ctx.stroke();
+    }
+
+    window.wharfLiveChart = function (canvas, opts) {
+      var ctx = canvas.getContext('2d');
+      var maxPoints = opts.maxPoints || 40;
+      var unit = opts.unit || '';
+      var data = {};
+      opts.series.forEach(function (s) { data[s.key] = []; });
+
+      // X-axis range caption ("-120s" .. "now") -- a text label under the
+      // canvas rather than drawn on it, since it never needs to move or
+      // scale with the data the way the Y labels do. Created once, right
+      // after the canvas, and left alone on every later tick.
+      var axisEl = canvas.nextElementSibling;
+      if (!axisEl || !axisEl.classList.contains('chart-axis-x')) {
+        axisEl = document.createElement('div');
+        axisEl.className = 'chart-axis-x';
+        canvas.parentNode.insertBefore(axisEl, canvas.nextSibling);
+      }
+      var windowSeconds = Math.round((maxPoints * (opts.intervalMs || 3000)) / 1000);
+      axisEl.innerHTML = '<span>-' + windowSeconds + 's</span><span>now</span>';
+
+      function draw() {
+        var w = canvas.width, h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+        var max = opts.minMax || 1;
+        opts.series.forEach(function (s) {
+          data[s.key].forEach(function (v) { if (v > max) max = v; });
+        });
+        // Vertical padding reserves room for the Y-axis text so a peak
+        // near the top of the range doesn't run straight through its
+        // own label.
+        var topPad = 12, bottomPad = 12;
+        var plotH = h - topPad - bottomPad;
+        opts.series.forEach(function (s) {
+          var points = data[s.key].map(function (v, i) {
+            return { x: (i / (maxPoints - 1)) * w, y: topPad + plotH - (v / max) * plotH };
+          });
+          drawSmoothCurve(ctx, points, s.color);
+        });
+
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted') || '#7c8fa3';
+        ctx.textBaseline = 'top';
+        ctx.fillText(formatAxisValue(max) + unit, 4, 2);
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('0' + unit, 4, h - 2);
+      }
+
+      function tick() {
+        fetch(opts.fetchUrl).then(function (r) {
+          if (!r.ok) throw new Error('stats unavailable');
+          return r.json();
+        }).then(function (json) {
+          opts.series.forEach(function (s) {
+            data[s.key].push(json[s.key] || 0);
+            if (data[s.key].length > maxPoints) data[s.key].shift();
+          });
+          draw();
+          if (opts.onData) opts.onData(json);
+        }).catch(function () {
+          if (opts.onError) opts.onError();
+        });
+      }
+
+      tick();
+      var interval = setInterval(tick, opts.intervalMs || 3000);
+      return { stop: function () { clearInterval(interval); } };
+    };
+  </script>
+</body>
+</html>
+{{end}}
+
+{{define "auth_layout"}}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{.Title}} · Wharf</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  {{template "content" .}}
+</body>
+</html>
+{{end}}

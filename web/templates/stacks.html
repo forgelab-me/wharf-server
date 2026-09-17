@@ -1,0 +1,33 @@
+{{define "content"}}
+<div class="toolbar">
+  <a href="/stacks/new" class="btn btn-primary">+ New stack</a>
+</div>
+<div class="panel">
+  {{if .Stacks}}
+  <table>
+    <thead>
+      <tr><th>Name</th><th>Target host</th><th>Trigger</th><th>Last status</th><th>Last sha</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .Stacks}}
+      <tr>
+        <td><a href="/stacks/{{.ID}}">{{.Name}}</a></td>
+        <td>{{.Host}}</td>
+        <td><span class="badge trigger-{{.Trigger}}">{{.Trigger}}</span></td>
+        <td><span class="badge status-{{.LastStatusClass}}">{{.LastStatusLabel}}</span></td>
+        <td><code>{{.LastSha}}</code></td>
+        <td class="row-actions">
+          <form method="post" action="/stacks/{{.ID}}/delete" class="delete-stack-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No stack yet — <a href="/stacks/new">create one</a>.</p>
+  {{end}}
+</div>
+{{end}}

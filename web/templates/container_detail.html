@@ -1,0 +1,200 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Actions</h2>
+  <div class="row-actions" style="justify-content:flex-start; gap:10px;">
+    <form method="post" action="/containers/{{.Container.ID}}/restart">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-primary">Restart</button>
+    </form>
+    <form method="post" action="/containers/{{.Container.ID}}/stop" class="stop-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost">Stop</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel">
+  <h2>Overview</h2>
+  <table class="kv-table">
+    <tr><th>Image</th><td>
+      <code>{{.Container.ImageDisplay}}</code>
+      {{if eq .Container.UpdateStatus "current"}}<span class="badge status-succeeded">up to date</span>{{end}}
+      {{if eq .Container.UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
+    </td></tr>
+    <tr><th>Host</th><td>{{.Container.Host}}</td></tr>
+    <tr><th>Status</th><td><span class="badge state-{{.Container.State}}">{{.Container.Status}}</span></td></tr>
+    <tr><th>Ports</th><td class="muted">
+      {{range $i, $p := .Container.Ports}}{{if $i}}, {{end}}{{if $p.URL}}<a href="{{$p.URL}}" target="_blank" rel="noopener">{{$p.Text}}</a>{{else}}{{$p.Text}}{{end}}{{end}}
+    </td></tr>
+    <tr><th>Created</th><td class="muted">{{.Container.Created}}</td></tr>
+    <tr><th>Stack</th><td>{{if .Container.Stack}}<a href="/stacks/{{.Container.Stack}}">{{.Container.Stack}}</a>{{else}}<span class="muted">— not managed by Wharf</span>{{end}}</td></tr>
+  </table>
+</section>
+
+<section class="panel">
+  <h2>Resources</h2>
+  {{if eq .Container.State "running"}}
+  <div class="chart-grid">
+    <div class="chart-block">
+      <div class="chart-block-header"><span>CPU</span><span class="chart-block-value" id="res-cpu-value">—</span></div>
+      <canvas class="chart-canvas" id="res-cpu-chart" width="600" height="80"></canvas>
+    </div>
+    <div class="chart-block">
+      <div class="chart-block-header"><span>Memory</span><span class="chart-block-value" id="res-mem-value">—</span></div>
+      <canvas class="chart-canvas" id="res-mem-chart" width="600" height="80"></canvas>
+    </div>
+  </div>
+  <p class="muted" style="font-size:12px; margin-top:10px;">Live only, refreshed every few seconds while this page is open — no history kept.</p>
+  <script>
+    // Deferred to DOMContentLoaded -- same reason as host_view.html:
+    // this runs before layout.html's shared script block defines
+    // window.wharfLiveChart otherwise.
+    document.addEventListener('DOMContentLoaded', function () {
+      var cpuChart = document.getElementById('res-cpu-chart');
+      var memChart = document.getElementById('res-mem-chart');
+      if (!cpuChart || !memChart) return;
+      var rootStyle = getComputedStyle(document.documentElement);
+      wharfLiveChart(cpuChart, {
+        fetchUrl: '/containers/{{.Container.ID}}/stats',
+        series: [{ key: 'cpuPercent', color: rootStyle.getPropertyValue('--accent') }],
+        minMax: 100,
+        unit: '%',
+        onData: function (json) {
+          document.getElementById('res-cpu-value').textContent = json.cpuPercent.toFixed(1) + '%';
+        },
+        onError: function () {
+          document.getElementById('res-cpu-value').textContent = '—';
+        }
+      });
+      wharfLiveChart(memChart, {
+        fetchUrl: '/containers/{{.Container.ID}}/stats',
+        series: [{ key: 'memPercent', color: rootStyle.getPropertyValue('--warn') }],
+        minMax: 100,
+        unit: '%',
+        onData: function (json) {
+          document.getElementById('res-mem-value').textContent = json.memUsage + ' (' + json.memPercent.toFixed(1) + '%)';
+        },
+        onError: function () {
+          document.getElementById('res-mem-value').textContent = '—';
+        }
+      });
+    });
+  </script>
+  {{else}}
+  <p class="muted">Container isn't running — no stats to show.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Processes</h2>
+  {{if .Processes}}
+  <div class="code-box"><pre>{{.Processes}}</pre></div>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, the container isn't running, or it didn't respond in time.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Container details</h2>
+  {{if .Detail.Image}}
+  <table class="kv-table">
+    <tr><th>Entrypoint</th><td><code>{{if .Detail.Entrypoint}}{{.Detail.Entrypoint}}{{else}}—{{end}}</code></td></tr>
+    <tr><th>Command</th><td><code>{{if .Detail.Cmd}}{{.Detail.Cmd}}{{else}}—{{end}}</code></td></tr>
+    <tr><th>Restart policy</th><td>{{.Detail.RestartPolicy}}</td></tr>
+  </table>
+
+  <h3 style="margin-top:20px; font-size:14px;">Environment variables</h3>
+  <p class="muted" style="font-size:12px;">Secret-sourced values are masked; everything else shows in plain text.</p>
+  {{if .EnvVars}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .EnvVars}}
+      <tr>
+        <td><code>{{.Key}}</code></td>
+        <td>
+          {{if .Secret}}
+            <span class="secret-value">••••••••••••••</span>
+            <span class="badge secret-badge">{{.Source}}</span>
+          {{else}}
+            <code>{{.Value}}</code>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No environment variables.</p>
+  {{end}}
+
+  <h3 style="margin-top:20px; font-size:14px;">Labels</h3>
+  {{if .Detail.Labels}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Labels}}
+      <tr><td><code>{{.Key}}</code></td><td class="muted">{{.Value}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No labels.</p>
+  {{end}}
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Volumes</h2>
+  {{if .Volumes}}
+  <table>
+    <thead><tr><th>Type</th><th>Source</th><th>Destination</th><th>Mode</th></tr></thead>
+    <tbody>
+      {{range .Volumes}}
+      <tr>
+        <td class="muted">{{.Type}}</td>
+        <td><code>{{.Source}}</code></td>
+        <td><code>{{.Destination}}</code></td>
+        <td class="muted">{{.Mode}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No volumes mounted.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Connected Networks</h2>
+  {{if .Networks}}
+  <table>
+    <thead><tr><th>Network</th><th>IP address</th><th>Gateway</th></tr></thead>
+    <tbody>
+      {{range .Networks}}
+      <tr>
+        <td>{{.Name}}</td>
+        <td class="muted">{{if .IPAddress}}{{.IPAddress}}{{else}}—{{end}}</td>
+        <td class="muted">{{if .Gateway}}{{.Gateway}}{{else}}—{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">Not connected to any network.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Logs</h2>
+  {{if .Logs}}
+  <div class="code-box logs-box">
+    <pre>{{.Logs}}</pre>
+  </div>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+{{end}}

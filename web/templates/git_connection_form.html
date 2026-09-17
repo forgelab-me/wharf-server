@@ -1,0 +1,70 @@
+{{define "content"}}
+<form class="form" method="post" action="/git-connections">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-row">
+    <label>Name</label>
+    <input type="text" name="name" required placeholder="e.g. github-org-shared">
+  </div>
+
+  <fieldset class="form-row">
+    <legend>Type</legend>
+    <label class="radio"><input type="radio" name="auth_kind" id="auth-ssh" value="ssh_key" checked> SSH key</label>
+    <label class="radio"><input type="radio" name="auth_kind" id="auth-http" value="http_password"> Username / password (or token)</label>
+  </fieldset>
+
+  <div id="ssh-fields">
+    <fieldset class="form-row">
+      <legend>Key source</legend>
+      <label class="radio"><input type="radio" name="key_source" id="key-generate" value="generate" checked> Generate</label>
+      <label class="radio"><input type="radio" name="key_source" id="key-import" value="import"> Import an existing key</label>
+    </fieldset>
+    <div id="import-fields" hidden>
+      <div class="form-row">
+        <label>Private key</label>
+        <textarea rows="8" name="private_key" placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"></textarea>
+        <p class="muted" style="margin-top:6px; font-size:12px;">Sent straight to the secrets-service, never logged, never returned by any endpoint after this. Consider rotating this key elsewhere if it's reused outside Wharf.</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="http-fields" hidden>
+    <div class="form-row">
+      <label>Username</label>
+      <input type="text" name="username" placeholder="e.g. a GitHub App slug, or a fixed token username like x-access-token">
+    </div>
+    <div class="form-row">
+      <label>Password / token</label>
+      <input type="password" name="password" placeholder="a Personal Access Token or Deploy Token, not your account password">
+    </div>
+    <p class="muted" style="font-size:12px;">Wharf can't mint this itself — create it on your Git host first (PAT, GitLab Deploy Token, ...) and paste it here. Sent as an Authorization header at clone time, never embedded in the repository URL.</p>
+  </div>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Create connection</button>
+  </div>
+</form>
+
+<script>
+  (function () {
+    var sshRadio = document.getElementById('auth-ssh');
+    var httpRadio = document.getElementById('auth-http');
+    var sshFields = document.getElementById('ssh-fields');
+    var httpFields = document.getElementById('http-fields');
+    var generateRadio = document.getElementById('key-generate');
+    var importRadio = document.getElementById('key-import');
+    var importFields = document.getElementById('import-fields');
+
+    function syncType() {
+      sshFields.hidden = !sshRadio.checked;
+      httpFields.hidden = !httpRadio.checked;
+    }
+    function syncSource() {
+      importFields.hidden = !importRadio.checked;
+    }
+    sshRadio.addEventListener('change', syncType);
+    httpRadio.addEventListener('change', syncType);
+    generateRadio.addEventListener('change', syncSource);
+    importRadio.addEventListener('change', syncSource);
+  })();
+</script>
+{{end}}

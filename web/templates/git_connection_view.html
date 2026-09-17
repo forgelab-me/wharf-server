@@ -1,0 +1,62 @@
+{{define "content"}}
+<div class="panel">
+  <table class="kv-table">
+    <tr><th>Name</th><td>
+      <form method="post" action="/git-connections/{{.Connection.ID}}/rename" class="inline-form" style="display:flex; gap:6px;">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="text" name="name" value="{{.Connection.Name}}" required class="address-input">
+        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+      </form>
+    </td></tr>
+    <tr><th>Type</th><td><span class="badge trigger-{{.Connection.AuthKind}}">{{.Connection.AuthKind}}</span></td></tr>
+  </table>
+</div>
+
+{{if eq .Connection.AuthKind "ssh_key"}}
+<section class="panel">
+  <h2>Public key</h2>
+  <p class="muted">Add this as a read-only Deploy Key on every repository that should use this connection. The private half never leaves the controller; it's only ever handed to an assigned agent transiently, for the duration of a clone.</p>
+  <div class="code-box">
+    <pre id="connkey">{{.PublicKey}}</pre>
+    <button class="btn btn-ghost copy-btn" data-copy-target="connkey">Copy</button>
+  </div>
+  <form method="post" action="/git-connections/{{.Connection.ID}}/regenerate-key" class="inline-form regenerate-key-form" style="margin-top:10px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost btn-sm">Regenerate key</button>
+  </form>
+  <p class="muted" style="font-size:12px; margin-top:6px;">Replaces this connection's key with a fresh one (RSA-4096 — accepted by every Git host, including Azure DevOps, which rejects ed25519 outright). The old public key stops working immediately; update it as a Deploy Key everywhere it was pasted.</p>
+</section>
+{{else}}
+<section class="panel">
+  <h2>Credential</h2>
+  <p class="muted">Username/password stored in the secrets-service. The password is never shown again after entry — same discipline as every other credential in Wharf.</p>
+  <form method="post" action="/git-connections/{{.Connection.ID}}/credential" class="form" style="max-width:420px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Username</label>
+      <input type="text" name="username" value="{{.HTTPUsername}}" required>
+    </div>
+    <div class="form-row">
+      <label>Password / token</label>
+      <input type="password" name="password" placeholder="Leave blank to keep the current one" autocomplete="new-password">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save credential</button>
+    </div>
+  </form>
+</section>
+{{end}}
+
+<section class="panel">
+  <h2>Delete</h2>
+  {{if .InUse}}
+  <p class="muted">One or more stacks still use this connection — repoint them to a different connection or dedicated key before it can be deleted.</p>
+  {{else}}
+  <p class="muted">Permanent — the key or credential stored for this connection is removed too.</p>
+  <form method="post" action="/git-connections/{{.Connection.ID}}/delete" class="inline-form delete-git-connection-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost">Delete connection</button>
+  </form>
+  {{end}}
+</section>
+{{end}}

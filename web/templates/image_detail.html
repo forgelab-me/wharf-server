@@ -1,0 +1,75 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Image details</h2>
+  {{if .Detail.ID}}
+  <table class="kv-table">
+    <tr><th>ID</th><td><code>{{.Detail.ID}}</code></td></tr>
+    <tr><th>Size</th><td>{{.Detail.Size}}</td></tr>
+    <tr><th>Created</th><td class="muted">{{.Detail.Created}}</td></tr>
+    <tr><th>Architecture</th><td>{{.Detail.Architecture}} / {{.Detail.Os}}</td></tr>
+    <tr><th>Built with Docker</th><td class="muted">{{.Detail.DockerVersion}}</td></tr>
+  </table>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Dockerfile details</h2>
+  <p class="muted" style="font-size:12px;">An image only ever carries the config it was baked with, never its actual Dockerfile source — this is that config: what CMD/ENTRYPOINT/ENV the image runs with.</p>
+  {{if .Detail.ID}}
+  <table class="kv-table">
+    <tr><th>Entrypoint</th><td><code>{{if .Detail.Entrypoint}}{{.Detail.Entrypoint}}{{else}}—{{end}}</code></td></tr>
+    <tr><th>Command</th><td><code>{{if .Detail.Cmd}}{{.Detail.Cmd}}{{else}}—{{end}}</code></td></tr>
+  </table>
+
+  <h3 style="margin-top:20px; font-size:14px;">Labels</h3>
+  {{if .Detail.Labels}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Labels}}
+      <tr><td><code>{{.Key}}</code></td><td class="muted">{{.Value}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No labels.</p>
+  {{end}}
+
+  <h3 style="margin-top:20px; font-size:14px;">Environment variables</h3>
+  {{if .Detail.Env}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Env}}
+      <tr><td><code>{{.Key}}</code></td><td><code>{{.Value}}</code></td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No environment variables baked into this image.</p>
+  {{end}}
+  {{end}}
+</section>
+
+<section class="panel">
+  <h2>Image layers</h2>
+  {{if .Layers}}
+  <table>
+    <thead><tr><th>Order</th><th>Size</th><th>Layer</th></tr></thead>
+    <tbody>
+      {{range .Layers}}
+      <tr>
+        <td class="muted">{{.Order}}</td>
+        <td class="muted">{{.Size}}</td>
+        <td><code>{{.CreatedBy}}</code></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+{{end}}

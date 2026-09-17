@@ -1,0 +1,58 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Volume details</h2>
+  {{if .Detail.Name}}
+  <table class="kv-table">
+    <tr><th>Name</th><td><code>{{.Detail.Name}}</code></td></tr>
+    <tr><th>Driver</th><td>{{.Detail.Driver}}</td></tr>
+    <tr><th>Mountpoint</th><td><code>{{.Detail.Mountpoint}}</code></td></tr>
+    <tr><th>Scope</th><td>{{.Detail.Scope}}</td></tr>
+    <tr><th>Created</th><td class="muted">{{.Detail.CreatedAt}}</td></tr>
+  </table>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</section>
+
+{{if .Detail.Name}}
+<section class="panel">
+  <h2>Options &amp; Labels</h2>
+  <h3 style="font-size:14px; margin-top:0;">Options</h3>
+  {{if .Detail.Options}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Options}}
+      <tr><td><code>{{.Key}}</code></td><td class="muted">{{.Value}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No driver options.</p>
+  {{end}}
+
+  <h3 style="font-size:14px; margin-top:20px;">Labels</h3>
+  {{if .Detail.Labels}}
+  <table>
+    <thead><tr><th>Key</th><th>Value</th></tr></thead>
+    <tbody>
+      {{range .Detail.Labels}}
+      <tr><td><code>{{.Key}}</code></td><td class="muted">{{.Value}}</td></tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No labels.</p>
+  {{end}}
+</section>
+{{end}}
+
+<section class="panel">
+  <h2>Used by</h2>
+  {{if .UsedBy}}
+  <p>{{range $i, $name := .UsedBy}}{{if $i}}, {{end}}{{$name}}{{end}}</p>
+  {{else}}
+  <p class="muted">Not mounted by any container Wharf can see on this host.</p>
+  {{end}}
+</section>
+{{end}}

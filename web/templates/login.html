@@ -1,0 +1,25 @@
+{{define "content"}}
+<div class="login-shell">
+  <div class="login-card">
+    <div class="brand">⚓ Wharf</div>
+    {{if .Error}}<p class="form-error">{{.Error}}</p>{{end}}
+    {{if not .LocalAuthDisabled}}
+    <form method="post" action="/login">
+      <div class="form-row">
+        <label>Username</label>
+        <input type="text" name="username" autofocus required>
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input type="password" name="password" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-block">Sign in</button>
+    </form>
+    {{end}}
+    {{if .OIDCDisplayName}}
+    {{if not .LocalAuthDisabled}}<div class="divider">or</div>{{end}}
+    <a href="/auth/oidc/login" class="btn btn-ghost btn-block">Continue with {{.OIDCDisplayName}}</a>
+    {{end}}
+  </div>
+</div>
+{{end}}

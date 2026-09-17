@@ -1,0 +1,14 @@
+{{define "content"}}
+<form class="form" method="post" action="/stacks/{{.Stack.ID}}/edit">
+  <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+  <div class="form-row">
+    <label>Compose file</label>
+    <textarea rows="14" name="compose_content">{{.Stack.ComposeContent}}</textarea>
+    <p class="muted" style="margin-top:6px; font-size:12px;">Saving records the current content as a revision first — nothing is ever lost, cf. History on the stack's page. This only changes what's stored; deploy separately afterward to apply it.</p>
+  </div>
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">Save</button>
+    <a href="/stacks/{{.Stack.ID}}" class="btn btn-ghost">Cancel</a>
+  </div>
+</form>
+{{end}}

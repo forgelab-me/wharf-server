@@ -1,0 +1,285 @@
+{{define "content"}}
+<div class="panel">
+  <table class="kv-table">
+    <tr><th>Name</th><td>
+      <form method="post" action="/stacks/{{.Stack.ID}}/rename" class="inline-form" style="display:flex; gap:6px;">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <input type="text" name="name" value="{{.Stack.Name}}" required class="address-input">
+        <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+      </form>
+    </td></tr>
+    <tr><th>Source</th><td>{{if eq .Stack.SourceType "local"}}Local (no Git){{else}}Git repository{{end}}</td></tr>
+    {{if eq .Stack.SourceType "git"}}
+    <tr><th>Repository</th><td><code>{{.Stack.Repo}}</code></td></tr>
+    <tr><th>Branch</th><td>{{.Stack.Branch}}</td></tr>
+    <tr><th>Compose file path</th><td><code>{{.Stack.ComposePath}}</code></td></tr>
+    {{end}}
+    <tr><th>Target host</th><td>{{.HostLabel}}</td></tr>
+    <tr><th>Trigger</th><td><span class="badge trigger-{{.Stack.Trigger}}">{{.Stack.Trigger}}</span></td></tr>
+  </table>
+</div>
+
+{{if .Containers}}
+<section class="panel">
+  <h2>Containers</h2>
+  <table>
+    <thead>
+      <tr><th>Service</th><th>Name</th><th>Image</th><th>Status</th><th>Ports</th></tr>
+    </thead>
+    <tbody>
+      {{range .Containers}}
+      <tr>
+        <td class="muted">{{.ServiceName}}</td>
+        <td><a href="/containers/{{.ID}}">{{.Name}}</a></td>
+        <td><code>{{.Image}}</code></td>
+        <td><span class="badge state-{{.State}}">{{.Status}}</span></td>
+        <td class="muted">
+          {{range $i, $p := .Ports}}{{if $i}}, {{end}}{{if $p.URL}}<a href="{{$p.URL}}" target="_blank" rel="noopener">{{$p.Text}}</a>{{else}}{{$p.Text}}{{end}}{{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
+{{if eq .Stack.SourceType "local"}}
+<section class="panel">
+  <h2>Compose file <a href="/stacks/{{.Stack.ID}}/edit" class="btn btn-ghost btn-sm" style="margin-left:8px;">Edit</a></h2>
+  <div class="code-box"><pre>{{.Stack.ComposeContent}}</pre></div>
+</section>
+
+<section class="panel">
+  <h2>Secrets</h2>
+  <p class="muted" style="font-size:12px;">Reference a key here as <code>${KEY}</code> in the compose file's <code>environment:</code> to deliver it as a real environment variable (no <code>_FILE</code> support needed on the image's part) — or as <code>KEY_FILE=/run/secrets/KEY</code> plus a <code>secrets:</code> block if it does. Values are never shown again once saved, here or anywhere else — only key names.</p>
+  {{if .SecretKeys}}
+  <p>
+    {{range .SecretKeys}}<code class="badge" style="margin-right:6px;">{{.}}</code>{{end}}
+  </p>
+  {{else}}
+  <p class="muted">No secrets set.</p>
+  {{end}}
+  <form method="post" action="/stacks/{{.Stack.ID}}/secrets">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Replace secrets (full block — this overwrites everything above)</label>
+      <textarea name="secrets" rows="4" placeholder="API_KEY=...&#10;DB_PASSWORD=..."></textarea>
+    </div>
+    <div class="row-actions" style="justify-content:flex-start; gap:10px;">
+      <button type="submit" class="btn btn-primary">Save secrets</button>
+      {{if .SecretKeys}}
+      <button type="submit" form="clear-secrets-{{.Stack.ID}}" class="btn btn-ghost">Remove all secrets</button>
+      {{end}}
+    </div>
+  </form>
+  {{if .SecretKeys}}
+  <form method="post" action="/stacks/{{.Stack.ID}}/secrets" id="clear-secrets-{{.Stack.ID}}" class="clear-secrets-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="action" value="clear">
+  </form>
+  {{end}}
+</section>
+
+{{if .Revisions}}
+<section class="panel">
+  <h2>History</h2>
+  <p class="muted">Every edit (and every restore) is kept here — nothing overwritten is ever gone.</p>
+  <table>
+    <thead><tr><th>Saved</th><th></th></tr></thead>
+    <tbody>
+      {{range .Revisions}}
+      <tr>
+        <td class="muted">{{.CreatedAt}}</td>
+        <td class="row-actions">
+          <form method="post" action="/stacks/{{$.Stack.ID}}/revisions/{{.ID}}/restore">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Restore</button>
+          </form>
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}
+
+<section class="panel">
+  <h2>Deployment</h2>
+  {{if .Deployment}}
+  <table class="kv-table">
+    <tr><th>Status</th><td>
+      <span class="badge status-{{.Deployment.Status}}" id="deployment-status-badge">{{.Deployment.Status}}</span>
+      {{if or (eq .Deployment.Status "queued") (eq .Deployment.Status "running")}}<span class="spinner-dot" title="in progress"></span>{{end}}
+    </td></tr>
+    <tr><th>Trigger</th><td>{{.Deployment.Trigger}}</td></tr>
+  </table>
+  {{if .Deployment.Output}}
+  <div class="code-box logs-box"><pre>{{.Deployment.Output}}</pre></div>
+  {{end}}
+  {{if or (eq .Deployment.Status "queued") (eq .Deployment.Status "running")}}
+  <script>
+    (function () {
+      var initialStatus = {{.Deployment.Status}};
+      function poll() {
+        fetch('/stacks/{{.Stack.ID}}/deployment-status').then(function (r) { return r.json(); }).then(function (data) {
+          if (data.status && data.status !== initialStatus && (data.status === 'succeeded' || data.status === 'failed')) {
+            sessionStorage.setItem('wharf-toast', JSON.stringify({
+              message: (data.action === 'down' ? 'Undeploy ' : 'Deployment ') + (data.status === 'succeeded' ? 'succeeded' : 'failed'),
+              type: data.status === 'succeeded' ? 'success' : 'error'
+            }));
+            location.reload();
+            return;
+          }
+          setTimeout(poll, 2000);
+        }).catch(function () { setTimeout(poll, 5000); });
+      }
+      setTimeout(poll, 2000);
+    })();
+  </script>
+  {{end}}
+  {{else}}
+  <p class="muted">Never deployed yet.</p>
+  {{end}}
+  <div class="row-actions" style="justify-content:flex-start; margin-top:14px; gap:10px;">
+    <form method="post" action="/stacks/{{.Stack.ID}}/deploy">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-primary">Deploy now</button>
+    </form>
+    <form method="post" action="/stacks/{{.Stack.ID}}/undeploy" id="undeploy-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost">Undeploy</button>
+    </form>
+    <form method="post" action="/stacks/{{.Stack.ID}}/delete" class="delete-stack-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost">Delete</button>
+    </form>
+  </div>
+</section>
+
+<script>
+  document.getElementById('undeploy-form').addEventListener('submit', function (e) {
+    if (!confirm('Stop and remove this stack\'s containers on its target host?')) {
+      e.preventDefault();
+    }
+  });
+</script>
+
+{{if .ImagePolicies}}
+<section class="panel">
+  <h2>Images</h2>
+  <p class="muted">Tracks each service's image against its registry — <strong>Pinned</strong> is never checked, <strong>Auto</strong> redeploys on its own when the registry moves, <strong>Propose</strong> just flags it here for you to apply.</p>
+  <table>
+    <thead>
+      <tr><th>Service</th><th>Image</th><th>Policy</th><th>Applied</th><th>Latest</th><th></th></tr>
+    </thead>
+    <tbody>
+      {{range .ImagePolicies}}
+      <tr>
+        <td>{{.ServiceName}}</td>
+        <td><code>{{.ImageRef}}</code></td>
+        <td>
+          <form method="post" action="/stacks/{{$.Stack.ID}}/images/{{.ServiceName}}/policy" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <select name="policy" onchange="this.form.requestSubmit()">
+              <option value="pinned" {{if eq .Policy "pinned"}}selected{{end}}>Pinned</option>
+              <option value="auto" {{if eq .Policy "auto"}}selected{{end}}>Auto</option>
+              <option value="propose" {{if eq .Policy "propose"}}selected{{end}}>Propose</option>
+            </select>
+          </form>
+        </td>
+        <td class="muted"><code>{{if .AppliedShort}}{{.AppliedShort}}{{else}}—{{end}}</code></td>
+        <td class="muted"><code>{{if .LatestShort}}{{.LatestShort}}{{else}}—{{end}}</code></td>
+        <td>
+          {{if .UpdateAvailable}}
+          <span class="badge status-pending">Update available</span>
+          <form method="post" action="/stacks/{{$.Stack.ID}}/images/{{.ServiceName}}/apply" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost">Apply</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+
+{{if eq .Stack.Trigger "polling"}}
+<section class="panel">
+  <h2>Polling</h2>
+  <table class="kv-table">
+    <tr><th>Last checked</th><td>{{if .Stack.LastPolledAt}}{{.Stack.LastPolledAt}}{{else}}<span class="muted">not yet checked</span>{{end}}</td></tr>
+    <tr><th>Last seen commit</th><td>{{if .Stack.LastPolledSHA}}<code>{{.Stack.LastPolledSHA}}</code>{{else}}<span class="muted">none yet</span>{{end}}</td></tr>
+  </table>
+  <form method="post" action="/stacks/{{.Stack.ID}}/poll-schedule" class="form-row" style="margin-top:10px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <label>Schedule (cron)</label>
+    <div class="inline-form">
+      <input type="text" name="poll_schedule" value="{{.Stack.PollSchedule}}" required>
+      <button type="submit" class="btn btn-ghost btn-sm">Save</button>
+    </div>
+  </form>
+  <form method="post" action="/stacks/{{.Stack.ID}}/poll-now" class="inline-form" style="margin-top:10px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost btn-sm">Check now</button>
+  </form>
+  <p class="muted" style="font-size:12px; margin-top:6px;">"Check now" runs a real poll immediately (not a preview) — if the remote branch has moved since the last check, it enqueues a deploy exactly like the schedule would. The very first check on a new stack only records the starting point rather than deploying, so it's safe to create a polling stack before the deploy key is on the Git host or secrets are pushed — use "Deploy now" above once you're ready for the first deploy.</p>
+</section>
+{{end}}
+
+{{if eq .Stack.Trigger "webhook"}}
+<section class="panel">
+  <h2>Webhook</h2>
+  <p class="muted">Push a signed request here to trigger a deploy automatically — GitHub: paste the secret into the repo's webhook config (content type <code>application/json</code>; it signs with <code>X-Hub-Signature-256</code>). GitLab: paste it as the token (sent as <code>X-Gitlab-Token</code>). Anything else: send it as an <code>X-Webhook-Secret</code> header.</p>
+  <div class="form-row">
+    <label>URL</label>
+    <div class="code-box">
+      <pre id="webhookurl">{{.WebhookURL}}</pre>
+      <button class="btn btn-ghost copy-btn" data-copy-target="webhookurl">Copy</button>
+    </div>
+  </div>
+  <div class="form-row">
+    <label>Secret</label>
+    <div class="code-box">
+      <pre id="webhooksecret">{{.Stack.WebhookSecret}}</pre>
+      <button class="btn btn-ghost copy-btn" data-copy-target="webhooksecret">Copy</button>
+    </div>
+  </div>
+</section>
+{{end}}
+
+{{if eq .Stack.SourceType "git"}}
+{{if .Stack.GitConnectionID}}
+<section class="panel">
+  <h2>Git credential</h2>
+  <p class="muted">This stack authenticates via the shared connection <a href="/git-connections/{{.Stack.GitConnectionID}}">{{if .GitConnection}}{{.GitConnection.Name}}{{else}}{{.Stack.GitConnectionID}}{{end}}</a>{{if .GitConnection}} ({{.GitConnection.AuthKind}}){{end}} rather than a key dedicated to this stack — manage or regenerate it from the connection's own page.</p>
+  {{if .ConnectionPublicKey}}
+  <div class="code-box">
+    <pre id="deploykey">{{.ConnectionPublicKey}}</pre>
+    <button class="btn btn-ghost copy-btn" data-copy-target="deploykey">Copy</button>
+  </div>
+  {{end}}
+</section>
+{{else}}
+<section class="panel">
+  <h2>Deploy key (SSH)</h2>
+  <p class="muted">Generated at creation by the <code>secrets-service</code> — add this as a read-only Deploy Key on your repository before the first deploy. The private half never leaves the controller; it's only ever handed to the assigned agent transiently, for the duration of a clone.</p>
+  <div class="code-box">
+    <pre id="deploykey">{{.Stack.SSHPublicKey}}</pre>
+    <button class="btn btn-ghost copy-btn" data-copy-target="deploykey">Copy</button>
+  </div>
+</section>
+{{end}}
+{{end}}
+
+<section class="panel">
+  <h2>Public key (age)</h2>
+  <p class="muted">Use it to encrypt <code>secrets.enc.yaml</code> locally if this stack lives on Git — either <strong>plain age</strong> (<code>age -r &lt;this key&gt; -o secrets.enc.yaml secrets.yaml</code>) or <strong>SOPS</strong> with age as its backend (<code>sops -e --age &lt;this key&gt; secrets.yaml &gt; secrets.enc.yaml</code>); Wharf detects which one it is. The private key never leaves the controller.</p>
+  <div class="code-box">
+    <pre id="pubkey">{{.Stack.PublicKey}}</pre>
+    <button class="btn btn-ghost copy-btn" data-copy-target="pubkey">Copy</button>
+  </div>
+</section>
+{{end}}
