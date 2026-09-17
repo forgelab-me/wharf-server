@@ -1430,6 +1430,70 @@ func (a *app) setPollScheduleHandler(w http.ResponseWriter, r *http.Request) {
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
+// setStackTriggerHandler serves POST /stacks/{id}/trigger -- there was no
+// way to change a stack's trigger mode after creation until now, only
+// its schedule/secret once already in that mode (cf. setPollScheduleHandler
+// above, hooksHandler below). Git stacks only: manual/webhook/polling all
+// key off having a repository to check or receive a hook for, which a
+// local stack doesn't have (cf. createStackHandler's own webhook-secret
+// generation, git-only for the same reason).
+func (a *app) setStackTriggerHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	st, err := a.store.GetStack(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	if st.SourceType != "git" {
+		redirectWithError(w, r, "/stacks/"+id, "only Git stacks can use a webhook or polling trigger")
+		return
+	}
+	trigger := r.FormValue("trigger")
+	if trigger != "manual" && trigger != "webhook" && trigger != "polling" {
+		redirectWithError(w, r, "/stacks/"+id, "invalid trigger")
+		return
+	}
+
+	// Preserve whatever this stack already had -- toggling back to a mode
+	// it was in before (e.g. webhook -> manual -> webhook) shouldn't force
+	// re-pasting a new secret into the Git host, or re-picking a schedule
+	// that was already fine. Only generate/default when there's nothing
+	// to preserve.
+	pollSchedule := st.PollSchedule
+	webhookSecret := st.WebhookSecret
+	switch trigger {
+	case "polling":
+		if pollSchedule == "" {
+			pollSchedule = "*/15 * * * *" // same cadence as the image-poller; edit right after via the schedule form below
+		}
+	case "webhook":
+		if webhookSecret == "" {
+			secret, err := randomHex(32)
+			if err != nil {
+				http.Error(w, "could not generate webhook secret: "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+			webhookSecret = secret
+		}
+	}
+
+	if err := a.store.UpdateStackTrigger(id, trigger, pollSchedule, webhookSecret); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if trigger == "polling" {
+		st.Trigger, st.PollSchedule = trigger, pollSchedule
+		if err := registerPolling(a, st); err != nil {
+			http.Error(w, "trigger saved but could not be scheduled: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	} else {
+		unregisterPolling(a, id)
+	}
+	redirectWithSaved(w, r, "/stacks/"+id)
+}
+
 // renameStackHandler serves POST /stacks/{id}/rename.
 func (a *app) renameStackHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -1750,6 +1814,7 @@ func main() {
 	mux.HandleFunc("POST /stacks/{id}/images/{service}/policy", a.setImagePolicyHandler)
 	mux.HandleFunc("POST /stacks/{id}/images/{service}/apply", a.applyImageUpdateHandler)
 	mux.HandleFunc("POST /stacks/{id}/rename", a.renameStackHandler)
+	mux.HandleFunc("POST /stacks/{id}/trigger", a.setStackTriggerHandler)
 	mux.HandleFunc("POST /stacks/{id}/poll-schedule", a.setPollScheduleHandler)
 	mux.HandleFunc("POST /stacks/{id}/poll-now", a.forcePollHandler)
 	mux.HandleFunc("GET /stacks/{id}/deployment-status", a.deploymentStatusHandler)

@@ -15,7 +15,20 @@
     <tr><th>Compose file path</th><td><code>{{.Stack.ComposePath}}</code></td></tr>
     {{end}}
     <tr><th>Target host</th><td>{{.HostLabel}}</td></tr>
-    <tr><th>Trigger</th><td><span class="badge trigger-{{.Stack.Trigger}}">{{.Stack.Trigger}}</span></td></tr>
+    <tr><th>Trigger</th><td>
+      {{if eq .Stack.SourceType "git"}}
+      <form method="post" action="/stacks/{{.Stack.ID}}/trigger" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <select name="trigger" onchange="this.form.requestSubmit()">
+          <option value="manual" {{if eq .Stack.Trigger "manual"}}selected{{end}}>manual</option>
+          <option value="webhook" {{if eq .Stack.Trigger "webhook"}}selected{{end}}>webhook</option>
+          <option value="polling" {{if eq .Stack.Trigger "polling"}}selected{{end}}>polling</option>
+        </select>
+      </form>
+      {{else}}
+      <span class="badge trigger-{{.Stack.Trigger}}">{{.Stack.Trigger}}</span>
+      {{end}}
+    </td></tr>
   </table>
 </div>
 

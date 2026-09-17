@@ -58,6 +58,23 @@ func registerPolling(a *app, st store.Stack) error {
 	return nil
 }
 
+// unregisterPolling removes a stack's live cron entry, if it has one --
+// called whenever a stack leaves polling mode (switched to manual or
+// webhook), so a stale schedule can't keep firing, and enqueueing
+// deploys, after the UI says the stack is no longer polling. A no-op,
+// not an error, for a stack that was never polling in the first place.
+func unregisterPolling(a *app, stackID string) {
+	a.polls.mu.Lock()
+	id, had := a.polls.entries[stackID]
+	if had {
+		delete(a.polls.entries, stackID)
+	}
+	a.polls.mu.Unlock()
+	if had {
+		a.cron.Remove(id)
+	}
+}
+
 // pollStack checks one stack's remote HEAD and enqueues a deploy if it
 // moved. Errors are logged and swallowed — a transient network hiccup
 // shouldn't crash the scheduler or take down polling for other stacks.

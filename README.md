@@ -80,6 +80,10 @@ server/
 
 Most non-trivial functions in this package carry a comment explaining *why*, not just what — that's the primary source of design rationale here.
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## License
 
 [MIT](LICENSE).

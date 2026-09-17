@@ -361,6 +361,24 @@ func (s *Store) SetPollSchedule(stackID, schedule string) error {
 	return nil
 }
 
+// UpdateStackTrigger switches a stack's trigger mode. pollSchedule and
+// webhookSecret are whatever the caller decided the stack should end up
+// with (a default schedule if newly-polling, a freshly generated secret
+// if newly-webhook, or just the previous value preserved either way) --
+// one write for all three columns, so a trigger switch is atomic rather
+// than a mode change followed by a separate schedule/secret write that
+// could land only half-applied.
+func (s *Store) UpdateStackTrigger(stackID, trigger, pollSchedule, webhookSecret string) error {
+	_, err := s.db.Exec(
+		`UPDATE stacks SET trigger_mode = ?, poll_schedule = ?, webhook_secret = ? WHERE id = ?`,
+		trigger, pollSchedule, webhookSecret, stackID,
+	)
+	if err != nil {
+		return fmt.Errorf("update trigger for stack %q: %w", stackID, err)
+	}
+	return nil
+}
+
 // RenameStack changes a stack's display name -- like a host's name
 // (cf. SetHostName), the id is what deployments/image policies/secrets
 // actually key on, so this has no effect on anything already running.
