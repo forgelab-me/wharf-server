@@ -31,7 +31,7 @@
   {{if .Connected}}
   <table>
     <thead>
-      <tr><th>Name</th><th>Status</th><th>Fingerprint</th><th>Last seen</th><th>Address</th></tr>
+      <tr><th>Name</th><th>Status</th><th>Fingerprint</th><th>Last seen</th><th>Agent version</th><th>Address</th></tr>
     </thead>
     <tbody>
       {{range .Connected}}
@@ -40,6 +40,10 @@
         <td><span class="badge status-connected">{{.Status}}</span></td>
         <td class="muted"><code>{{.CertFingerprint}}</code></td>
         <td class="muted">{{.LastSeenAt}}</td>
+        <td class="muted">
+          {{if .AgentVersion}}{{.AgentVersion}}{{else}}—{{end}}
+          {{if .AgentOutdated}}<span class="badge status-pending" title="Latest is {{$.LatestAgentVersion}}">update available</span>{{end}}
+        </td>
         <td>
           <form method="post" action="/hosts/{{.ID}}/address" class="inline-form" style="display:flex; gap:6px;">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

@@ -70,6 +70,7 @@ type tunnelMessage struct {
 	Images     []imageReport     `json:"images,omitempty"`
 	Volumes    []volumeReport    `json:"volumes,omitempty"`
 	Networks   []networkReport   `json:"networks,omitempty"`
+	Version    string            `json:"version,omitempty"` // "state" only -- the reporting agent's own build, cf. versioncheck.go
 
 	// "command" (controller -> agent)
 	RequestID   string `json:"request_id,omitempty"`
@@ -317,6 +318,12 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			if err := a.store.ReplaceHostNetworks(host.ID, networks); err != nil {
 				log.Println("tunnel: replace host networks for", host.ID, "failed:", err)
+			}
+
+			if msg.Version != "" {
+				if err := a.store.SetHostAgentVersion(host.ID, msg.Version); err != nil {
+					log.Println("tunnel: set agent version for", host.ID, "failed:", err)
+				}
 			}
 		default:
 			log.Println("tunnel: unknown message type", msg.Type, "from host", host.ID)

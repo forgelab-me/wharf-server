@@ -135,6 +135,14 @@ func render(w http.ResponseWriter, r *http.Request, layoutTmpl, page string, dat
 		if _, exists := m["Version"]; !exists {
 			m["Version"] = version
 		}
+		// Same auto-injection as Version, for the "update available"
+		// badge next to it (cf. versioncheck.go) -- every page gets it
+		// since the sidebar footer is shared layout, not per-page.
+		if _, exists := m["LatestServerVersion"]; !exists {
+			latestServer, _ := latest.get()
+			m["LatestServerVersion"] = latestServer
+			m["ServerUpdateAvailable"] = latestServer != "" && semverLess(version, latestServer)
+		}
 	}
 	tmpl, err := template.ParseFS(templatesFS, "web/templates/layout.html", "web/templates/"+page)
 	if err != nil {
@@ -254,6 +262,22 @@ func (a *app) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "layout", "dashboard.html", data)
 }
 
+// hostRow adds the version-check verdict to a store.Host for the
+// template -- kept out of store.Host itself since "outdated" is a UI-only
+// judgment against versioncheck.go's cache, not a fact persisted about
+// the host.
+type hostRow struct {
+	store.Host
+	AgentOutdated bool
+}
+
+func newHostRow(h store.Host, latestAgent string) hostRow {
+	return hostRow{
+		Host:          h,
+		AgentOutdated: h.AgentVersion != "" && latestAgent != "" && semverLess(h.AgentVersion, latestAgent),
+	}
+}
+
 // hostsHandler est réel depuis l'implémentation de l'enrôlement mTLS —
 // cf. ARCHITECTURE.md, "Enrôlement d'un nouvel agent". Tout le reste de
 // cette page (containers/images/... plus bas) reste mocké.
@@ -263,12 +287,14 @@ func (a *app) hostsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	var pending, connected []store.Host
+	_, latestAgent := latest.get()
+	var pending, connected []hostRow
 	for _, h := range all {
+		row := newHostRow(h, latestAgent)
 		if h.Status == "pending" {
-			pending = append(pending, h)
+			pending = append(pending, row)
 		} else {
-			connected = append(connected, h)
+			connected = append(connected, row)
 		}
 	}
 
@@ -289,6 +315,7 @@ func (a *app) hostsHandler(w http.ResponseWriter, r *http.Request) {
 		"Connected":             connected,
 		"ControllerFingerprint": a.fingerprint,
 		"ControllerAddr":        controllerAddr,
+		"LatestAgentVersion":    latestAgent,
 	}
 	render(w, r, "layout", "hosts.html", data)
 }
@@ -305,11 +332,13 @@ func (a *app) hostViewHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, connected := a.tunnels.get(id)
+	_, latestAgent := latest.get()
 	data := map[string]any{
-		"Title":     h.Name,
-		"Nav":       "hosts",
-		"Host":      h,
-		"Connected": connected,
+		"Title":              h.Name,
+		"Nav":                "hosts",
+		"Host":               newHostRow(h, latestAgent),
+		"Connected":          connected,
+		"LatestAgentVersion": latestAgent,
 	}
 	render(w, r, "layout", "host_view.html", data)
 }
@@ -1786,6 +1815,9 @@ func main() {
 	}
 	if err := registerImagePolling(a); err != nil {
 		log.Fatal("register image polling: ", err)
+	}
+	if err := registerVersionChecking(a); err != nil {
+		log.Fatal("register version checking: ", err)
 	}
 	a.cron.Start()
 	defer a.cron.Stop()

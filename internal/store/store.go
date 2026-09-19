@@ -127,7 +127,8 @@ func Open(path string) (*Store, error) {
 		approved_at      TEXT,
 		last_seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
 		created_at       TEXT NOT NULL DEFAULT (datetime('now')),
-		address          TEXT NOT NULL DEFAULT ''
+		address          TEXT NOT NULL DEFAULT '',
+		agent_version    TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS deployments (
 		id           TEXT PRIMARY KEY,
@@ -260,6 +261,10 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(`ALTER TABLE stacks ADD COLUMN substituted_env_keys TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		db.Close()
 		return nil, fmt.Errorf("migrate stacks.substituted_env_keys: %w", err)
+	}
+	if _, err := db.Exec(`ALTER TABLE hosts ADD COLUMN agent_version TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+		db.Close()
+		return nil, fmt.Errorf("migrate hosts.agent_version: %w", err)
 	}
 	// The file is guaranteed to exist by now (the schema exec above forced
 	// the driver to create it) -- tightened to owner-only every startup,
@@ -431,6 +436,7 @@ type Host struct {
 	ApprovedBy      string
 	LastSeenAt      string
 	Address         string // reachable network address, admin-set, empty until configured — cf. ARCHITECTURE.md, port links
+	AgentVersion    string // this host's agent build, reported on every "state" push — empty until the agent's first connection after this column existed, cf. versioncheck.go
 }
 
 var hostSlugRe = regexp.MustCompile(`[^a-z0-9-]+`)
@@ -495,8 +501,8 @@ func (s *Store) UpsertHostByFingerprint(name, fingerprint string) (host Host, cr
 func (s *Store) GetHostByFingerprint(fingerprint string) (Host, error) {
 	var h Host
 	err := s.db.QueryRow(
-		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address FROM hosts WHERE cert_fingerprint = ?`, fingerprint,
-	).Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address)
+		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address, agent_version FROM hosts WHERE cert_fingerprint = ?`, fingerprint,
+	).Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address, &h.AgentVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Host{}, ErrNotFound
 	}
@@ -509,8 +515,8 @@ func (s *Store) GetHostByFingerprint(fingerprint string) (Host, error) {
 func (s *Store) GetHost(id string) (Host, error) {
 	var h Host
 	err := s.db.QueryRow(
-		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address FROM hosts WHERE id = ?`, id,
-	).Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address)
+		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address, agent_version FROM hosts WHERE id = ?`, id,
+	).Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address, &h.AgentVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Host{}, ErrNotFound
 	}
@@ -521,7 +527,7 @@ func (s *Store) GetHost(id string) (Host, error) {
 }
 
 func (s *Store) ListHosts() ([]Host, error) {
-	rows, err := s.db.Query(`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address FROM hosts ORDER BY rowid DESC`)
+	rows, err := s.db.Query(`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address, agent_version FROM hosts ORDER BY rowid DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list hosts: %w", err)
 	}
@@ -530,7 +536,7 @@ func (s *Store) ListHosts() ([]Host, error) {
 	var out []Host
 	for rows.Next() {
 		var h Host
-		if err := rows.Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address); err != nil {
+		if err := rows.Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address, &h.AgentVersion); err != nil {
 			return nil, fmt.Errorf("scan host: %w", err)
 		}
 		out = append(out, h)
@@ -553,6 +559,20 @@ func (s *Store) SetHostAddress(id, address string) error {
 	}
 	if n == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+// SetHostAgentVersion records the version an agent reported on its most
+// recent "state" push (cf. tunnel.go) -- purely informational, compared
+// against the latest published release by versioncheck.go to flag an
+// outdated agent in the Hosts UI. Overwritten on every state push rather
+// than only on change, same as the container/image/volume/network
+// snapshots it arrives alongside.
+func (s *Store) SetHostAgentVersion(id, version string) error {
+	_, err := s.db.Exec(`UPDATE hosts SET agent_version = ? WHERE id = ?`, version, id)
+	if err != nil {
+		return fmt.Errorf("set host agent version %q: %w", id, err)
 	}
 	return nil
 }

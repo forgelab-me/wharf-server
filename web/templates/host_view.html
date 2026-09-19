@@ -12,6 +12,10 @@
     <tr><th>Status</th><td><span class="badge status-{{.Host.Status}}">{{.Host.Status}}</span></td></tr>
     <tr><th>Fingerprint</th><td class="muted"><code>{{.Host.CertFingerprint}}</code></td></tr>
     <tr><th>Last seen</th><td class="muted">{{.Host.LastSeenAt}}</td></tr>
+    <tr><th>Agent version</th><td class="muted">
+      {{if .Host.AgentVersion}}{{.Host.AgentVersion}}{{else}}—{{end}}
+      {{if .Host.AgentOutdated}}<span class="badge status-pending" title="Latest is {{.LatestAgentVersion}}">update available</span>{{end}}
+    </td></tr>
     <tr><th>Address</th><td>
       <form method="post" action="/hosts/{{.Host.ID}}/address" class="inline-form" style="display:flex; gap:6px;">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">

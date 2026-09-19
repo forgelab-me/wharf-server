@@ -33,6 +33,7 @@
       <div class="sidebar-footer">
         {{if .Mock}}<span class="badge mock">Preview — sample data</span>{{end}}
         <span class="version">{{.Version}}</span>
+        {{if .ServerUpdateAvailable}}<a href="https://github.com/forgelab-me/wharf-server/releases/tag/v{{.LatestServerVersion}}" target="_blank" rel="noopener" class="badge status-pending" title="Update available">v{{.LatestServerVersion}} available</a>{{end}}
       </div>
     </aside>
     <main>
