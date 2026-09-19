@@ -310,6 +310,8 @@ option { background-color: var(--bg-elevated); color: var(--text); }
 .kv-table tr:last-child td, .kv-table tr:last-child th { border-bottom: none; }
 
 .logs-box pre { color: #9fb3c8; max-height: 280px; overflow-y: auto; }
+.logs-box-full pre { max-height: 70vh; }
+.log-line-hidden { display: none; }
 
 .btn {
   display: inline-flex;

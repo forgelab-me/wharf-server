@@ -1897,6 +1897,8 @@ func main() {
 	mux.HandleFunc("GET /stacks/{id}/deployment-status", a.deploymentStatusHandler)
 	mux.HandleFunc("GET /containers", a.containersHandler)
 	mux.HandleFunc("GET /containers/{id}", a.containerDetailHandler)
+	mux.HandleFunc("GET /containers/{id}/logs", a.containerLogsPageHandler)
+	mux.HandleFunc("GET /containers/{id}/logs/raw", a.containerLogsRawHandler)
 	mux.HandleFunc("GET /containers/{id}/stats", a.containerStatsHandler)
 	mux.HandleFunc("POST /containers/{id}/restart", a.restartContainerHandler)
 	mux.HandleFunc("POST /containers/{id}/stop", a.stopContainerHandler)

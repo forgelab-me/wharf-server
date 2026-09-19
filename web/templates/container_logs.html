@@ -1,0 +1,84 @@
+{{define "content"}}
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <a href="/containers/{{.Container.ID}}" class="btn btn-ghost btn-sm">&larr; {{.Container.Name}}</a>
+    <select class="tail-select" onchange="location.href='/containers/{{.Container.ID}}/logs?tail='+encodeURIComponent(this.value)">
+      <option value="100" {{if eq .Tail "100"}}selected{{end}}>Last 100 lines</option>
+      <option value="200" {{if eq .Tail "200"}}selected{{end}}>Last 200 lines</option>
+      <option value="500" {{if eq .Tail "500"}}selected{{end}}>Last 500 lines</option>
+      <option value="1000" {{if eq .Tail "1000"}}selected{{end}}>Last 1000 lines</option>
+      <option value="2000" {{if eq .Tail "2000"}}selected{{end}}>Last 2000 lines</option>
+      <option value="all" {{if eq .Tail "all"}}selected{{end}}>All lines</option>
+    </select>
+    <input type="search" class="search-filter log-search-filter" placeholder="Filter logs...">
+    <label class="switch-filter"><span class="switch"><input type="checkbox" class="log-autorefresh" checked><span class="switch-track"></span></span> Auto-refresh</label>
+  </div>
+  <div>
+    <a href="/containers/{{.Container.ID}}/logs/raw?tail={{.Tail}}&download=1" class="btn btn-ghost btn-sm">Download</a>
+  </div>
+</div>
+<div class="panel">
+  {{if .Logs}}
+  <div class="code-box logs-box logs-box-full" id="logs-container" data-fetch-url="/containers/{{.Container.ID}}/logs/raw?tail={{.Tail}}">
+    <pre id="logs-pre">{{range .Lines}}<span data-line>{{.}}</span>
+{{end}}</pre>
+  </div>
+  {{else}}
+  <p class="muted">Not available right now — either this host's agent isn't currently connected, or it didn't respond in time. Reload once it reconnects.</p>
+  {{end}}
+</div>
+<script>
+  // Deferred to DOMContentLoaded for the same reason as host_view.html's
+  // own chart setup -- this runs before layout.html's shared script
+  // block, which is what scrolls .logs-box pre to the bottom on load.
+  document.addEventListener('DOMContentLoaded', function () {
+    var container = document.getElementById('logs-container');
+    if (!container) return; // agent unreachable at load -- nothing to poll or filter
+
+    var pre = document.getElementById('logs-pre');
+    var fetchUrl = container.dataset.fetchUrl;
+    var search = document.querySelector('.log-search-filter');
+    var autoRefresh = document.querySelector('.log-autorefresh');
+
+    function applyFilter() {
+      var q = search.value.trim().toLowerCase();
+      pre.querySelectorAll('span[data-line]').forEach(function (el) {
+        el.classList.toggle('log-line-hidden', q !== '' && el.textContent.toLowerCase().indexOf(q) === -1);
+      });
+    }
+
+    // Rebuilds the <pre> from plain text via textContent, never
+    // innerHTML -- log output is whatever the container printed, not
+    // trusted markup, and this is the one place that content reaches
+    // the DOM after the initial (already auto-escaped by html/template)
+    // server render.
+    function renderLines(text) {
+      pre.textContent = '';
+      var lines = text.replace(/\n$/, '').split('\n');
+      lines.forEach(function (line) {
+        var span = document.createElement('span');
+        span.dataset.line = '';
+        span.textContent = line;
+        pre.appendChild(span);
+        pre.appendChild(document.createTextNode('\n'));
+      });
+      applyFilter();
+    }
+
+    function poll() {
+      if (!autoRefresh.checked) return;
+      var atBottom = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 40;
+      fetch(fetchUrl).then(function (r) {
+        if (!r.ok) throw new Error('logs unavailable');
+        return r.text();
+      }).then(function (text) {
+        renderLines(text);
+        if (atBottom) pre.scrollTop = pre.scrollHeight;
+      }).catch(function () { /* transient -- next tick tries again */ });
+    }
+
+    search.addEventListener('input', applyFilter);
+    setInterval(poll, 5000);
+  });
+</script>
+{{end}}

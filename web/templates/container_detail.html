@@ -188,7 +188,10 @@
 </section>
 
 <section class="panel">
-  <h2>Logs</h2>
+  <div class="toolbar toolbar-split" style="margin-bottom:6px;">
+    <h2 style="margin:0;">Logs</h2>
+    <a href="/containers/{{.Container.ID}}/logs" class="btn btn-ghost btn-sm">Full page &rarr;</a>
+  </div>
   {{if .Logs}}
   <div class="code-box logs-box">
     <pre>{{.Logs}}</pre>

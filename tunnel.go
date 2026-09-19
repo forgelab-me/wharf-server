@@ -76,6 +76,7 @@ type tunnelMessage struct {
 	RequestID   string `json:"request_id,omitempty"`
 	Action      string `json:"action,omitempty"` // "restart" | "stop" | "logs" | "inspect" | "stats" | "top" | "host_stats" | "image_inspect" | "image_history" | "volume_inspect" | "network_inspect" | "volume_sizes" | "volume_list" | "volume_read" | "volume_write" | "volume_rename" | "volume_delete"
 	ContainerID string `json:"container_id,omitempty"`
+	Tail        string `json:"tail,omitempty"` // "logs" only, cf. sendLogsCommand
 
 	// Volume browsing (controller -> agent) -- Path/NewPath are always
 	// the full in-container path under the ephemeral helper's /vol mount
@@ -113,6 +114,15 @@ type tunnelConn struct {
 // side.
 func (tc *tunnelConn) sendCommand(ctx context.Context, action, containerID string) (tunnelMessage, error) {
 	return tc.send(ctx, tunnelMessage{Action: action, ContainerID: containerID})
+}
+
+// sendLogsCommand is sendCommand's counterpart for the full logs page
+// (cf. containers.go) -- tail picks how many lines back, validated
+// against a fixed allowlist by the caller before this is ever sent
+// (logTailFromQuery), not passed through from a request query param
+// unchecked.
+func (tc *tunnelConn) sendLogsCommand(ctx context.Context, containerID, tail string) (tunnelMessage, error) {
+	return tc.send(ctx, tunnelMessage{Action: "logs", ContainerID: containerID, Tail: tail})
 }
 
 // sendVolumeCommand is sendCommand's counterpart for volume browsing --

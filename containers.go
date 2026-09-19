@@ -206,6 +206,104 @@ func (a *app) containerDetailHandler(w http.ResponseWriter, r *http.Request) {
 	render(w, r, "layout", "container_detail.html", data)
 }
 
+// validLogTails is the ?tail= allowlist for the full logs page/raw
+// endpoint -- an allowlist rather than "must parse as a positive int"
+// both keeps the choices to values worth offering in a <select> and
+// keeps a request query param from being forwarded to the agent's
+// exec.Command as anything other than one of these exact strings.
+var validLogTails = map[string]bool{"100": true, "200": true, "500": true, "1000": true, "2000": true, "all": true}
+
+func logTailFromQuery(r *http.Request) string {
+	if tail := r.URL.Query().Get("tail"); validLogTails[tail] {
+		return tail
+	}
+	return "500"
+}
+
+// containerLogsPageHandler serves GET /containers/{id}/logs -- the full
+// logs page (cf. container_detail.html's own embedded, fixed-at-200,
+// never-refreshing preview). Same server-rendered-then-polled shape as
+// containerStatsHandler's live chart: an initial render here, refreshed
+// client-side by containerLogsRawHandler so this handler only ever
+// blocks on one agent round trip, not one per poll tick.
+func (a *app) containerLogsPageHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	c, err := a.store.GetHostContainerByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	tail := logTailFromQuery(r)
+	var logs string
+	if tc, ok := a.tunnels.get(c.HostID); ok {
+		if result, err := tc.sendLogsCommand(r.Context(), c.ContainerID, tail); err == nil && result.OK {
+			logs = result.Output
+		}
+	}
+	data := map[string]any{
+		"Title":     c.Name + " · Logs",
+		"Nav":       "containers",
+		"Container": containerViewFromRow(c, "", ""),
+		"Logs":      logs,
+		"Lines":     splitLogLines(logs),
+		"Tail":      tail,
+	}
+	render(w, r, "layout", "container_logs.html", data)
+}
+
+// containerLogsRawHandler serves GET /containers/{id}/logs/raw -- plain
+// text, polled by container_logs.html's own script to refresh without a
+// full page reload. ?download=1 (the page's Download link) adds
+// Content-Disposition so a click saves a file instead of a fetch()
+// silently discarding text nothing would otherwise render.
+func (a *app) containerLogsRawHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	c, err := a.store.GetHostContainerByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	tc, ok := a.tunnels.get(c.HostID)
+	if !ok {
+		http.Error(w, "host not connected", http.StatusServiceUnavailable)
+		return
+	}
+	result, err := tc.sendLogsCommand(r.Context(), c.ContainerID, logTailFromQuery(r))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusGatewayTimeout)
+		return
+	}
+	if !result.OK {
+		http.Error(w, result.Output, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	if r.URL.Query().Get("download") != "" {
+		// Docker itself only ever names a container [a-zA-Z0-9][a-zA-Z0-9_.-]*
+		// (enforced by the daemon, not by this app), so c.Name can't carry a
+		// '"'/CR/LF to begin with -- stripped anyway as a second line of
+		// defense against a header-injection-shaped value reaching a raw
+		// Content-Disposition header, rather than trusting that invariant
+		// holds forever.
+		safeName := strings.NewReplacer(`"`, "", "\r", "", "\n", "").Replace(c.Name)
+		w.Header().Set("Content-Disposition", `attachment; filename="`+safeName+`.log"`)
+	}
+	w.Write([]byte(result.Output))
+}
+
+// splitLogLines turns raw "docker logs" output into one entry per line
+// for container_logs.html's per-line search filter -- a single <pre>
+// blob has no per-line boundary a client-side filter could hide/show
+// against. Trims exactly one trailing newline (docker logs always ends
+// with one) rather than every trailing blank line, so a log that
+// genuinely ends with blank output isn't silently eaten.
+func splitLogLines(logs string) []string {
+	if logs == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimSuffix(logs, "\n"), "\n")
+}
+
 // containerDetailInfo is the "Container details" card's view model,
 // straight from `docker inspect` — no masking needed here (image,
 // command, entrypoint, labels and restart policy are never secrets).
