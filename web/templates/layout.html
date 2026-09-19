@@ -85,14 +85,17 @@
     })();
     {{if .Saved}}
     // Same one-shot idea as the sessionStorage bridge above, for a save
+    // (or an action like restart/stop, cf. redirectWithSavedMessage)
     // whose result isn't otherwise obvious on the page it redirected
     // back to (cf. redirectWithSaved/render's Saved auto-injection) --
-    // ?saved=1 is stripped right after so a manual reload of this exact
-    // URL doesn't show the toast again for a stale bookmark/history entry.
-    showToast('Saved', 'success');
+    // ?saved=1/&saved_msg= are stripped right after so a manual reload
+    // of this exact URL doesn't show the toast again for a stale
+    // bookmark/history entry.
+    showToast('{{.SavedMessage}}', 'success');
     (function () {
       var url = new URL(location.href);
       url.searchParams.delete('saved');
+      url.searchParams.delete('saved_msg');
       window.history.replaceState({}, '', url);
     })();
     {{end}}

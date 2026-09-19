@@ -107,6 +107,19 @@ func render(w http.ResponseWriter, r *http.Request, layoutTmpl, page string, dat
 		if _, exists := m["Saved"]; !exists {
 			m["Saved"] = r.URL.Query().Get("saved") != ""
 		}
+		// SavedMessage lets a redirect say what actually happened (cf.
+		// redirectWithSavedMessage, used by restart/stop -- a bare
+		// "Saved" reads wrong for an action, and by the time the
+		// redirect lands the container has already finished restarting,
+		// so the toast is the only sign it happened at all) instead of
+		// the generic "Saved" every other redirectWithSaved call site
+		// is fine with.
+		if _, exists := m["SavedMessage"]; !exists {
+			m["SavedMessage"] = "Saved"
+			if msg := r.URL.Query().Get("saved_msg"); msg != "" {
+				m["SavedMessage"] = msg
+			}
+		}
 		// CSRFToken lets every "<form method=post>" carry a hidden
 		// csrf_token field without each handler building one itself --
 		// requireAuth checks it against the same session cookie on the
@@ -159,6 +172,14 @@ func redirectWithError(w http.ResponseWriter, r *http.Request, path, message str
 // lifetime as Error.
 func redirectWithSaved(w http.ResponseWriter, r *http.Request, path string) {
 	http.Redirect(w, r, path+"?saved=1", http.StatusSeeOther)
+}
+
+// redirectWithSavedMessage is redirectWithSaved with a specific toast
+// instead of the generic "Saved" -- for a redirect where "Saved" would
+// be the wrong word (nothing was saved, an action ran) but the same
+// one-shot "this succeeded" feedback is still needed.
+func redirectWithSavedMessage(w http.ResponseWriter, r *http.Request, path, message string) {
+	http.Redirect(w, r, path+"?saved=1&saved_msg="+url.QueryEscape(message), http.StatusSeeOther)
 }
 
 // dashboardHandler was the last mocked page -- every stat and every row
