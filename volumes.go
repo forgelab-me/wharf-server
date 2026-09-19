@@ -68,7 +68,7 @@ func (a *app) deleteVolumesHandler(w http.ResponseWriter, r *http.Request) {
 	// already happened on the real daemon, but host_volumes only catches
 	// up once the agent's next debounced snapshot arrives, which this
 	// redirect routinely beats. cf. layout.html's poll-and-replace script.
-	http.Redirect(w, r, "/volumes?refreshing=1", http.StatusSeeOther)
+	http.Redirect(w, r, appendSavedMessage("/volumes?refreshing=1", fmt.Sprintf("%d volume(s) deleted", len(refs))), http.StatusSeeOther)
 }
 
 func (a *app) volumesHandler(w http.ResponseWriter, r *http.Request) {

@@ -213,7 +213,7 @@ func (a *app) volumeBrowseRenameHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "rename failed: "+msg)
 		return
 	}
-	http.Redirect(w, r, backTo, http.StatusSeeOther)
+	http.Redirect(w, r, appendSavedMessage(backTo, "Renamed"), http.StatusSeeOther)
 }
 
 // volumeBrowseDeleteHandler serves POST
@@ -245,7 +245,7 @@ func (a *app) volumeBrowseDeleteHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "delete failed: "+msg)
 		return
 	}
-	http.Redirect(w, r, backTo, http.StatusSeeOther)
+	http.Redirect(w, r, appendSavedMessage(backTo, "Deleted"), http.StatusSeeOther)
 }
 
 // volumeBrowseUploadHandler serves POST
@@ -305,7 +305,7 @@ func (a *app) volumeBrowseUploadHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "upload failed: "+msg)
 		return
 	}
-	http.Redirect(w, r, backTo, http.StatusSeeOther)
+	http.Redirect(w, r, appendSavedMessage(backTo, "Uploaded"), http.StatusSeeOther)
 }
 
 // volumeBrowseEditHandler serves GET
@@ -393,7 +393,9 @@ func (a *app) volumeBrowseSaveHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, backTo, "save failed: "+msg)
 		return
 	}
-	http.Redirect(w, r, backTo, http.StatusSeeOther)
+	// backTo already carries its own ?path=... query -- appendSavedMessage,
+	// not redirectWithSaved, so this doesn't produce a second "?".
+	http.Redirect(w, r, appendSavedMessage(backTo, "Saved"), http.StatusSeeOther)
 }
 
 // volumeBrowseDownloadHandler serves GET

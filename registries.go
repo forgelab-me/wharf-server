@@ -125,5 +125,5 @@ func (a *app) deleteRegistryCredentialHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/settings/registries", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/settings/registries", "Registry credential removed")
 }

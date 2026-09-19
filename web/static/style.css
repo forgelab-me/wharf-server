@@ -365,7 +365,10 @@ option { background-color: var(--bg-elevated); color: var(--text); }
 
 .wharf-toast {
   position: fixed;
-  bottom: 24px;
+  /* Below the topbar (20px padding + ~20px line-height + border), not
+     over it -- top:24px alone would sit right under the user-chip/Sign
+     out button in the same corner. */
+  top: 88px;
   right: 24px;
   background: var(--bg-elevated);
   border: 1px solid var(--border);
@@ -375,7 +378,7 @@ option { background-color: var(--bg-elevated); color: var(--text); }
   font-size: 13px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
   opacity: 0;
-  transform: translateY(10px);
+  transform: translateY(-10px);
   transition: opacity 0.25s, transform 0.25s;
   z-index: 1000;
   max-width: 360px;

@@ -160,6 +160,23 @@ func render(w http.ResponseWriter, r *http.Request, layoutTmpl, page string, dat
 	buf.WriteTo(w)
 }
 
+// appendQuery joins a query fragment ("k=v" or "k1=v1&k2=v2") onto path
+// with "?" or "&" as appropriate -- several redirect targets in this
+// codebase already carry their own query string (a volume browser's
+// backTo's "?path=...", a bulk delete's "?refreshing=1"), and a second
+// bare "?" there doesn't start a new parameter, it gets appended onto
+// the *value* of whatever came before it (found precisely this way:
+// redirectWithError against a volumebrowse.go backTo was producing
+// ".../browse?path=foo?error=bar", one query value instead of two
+// params -- both the error message and the path navigation broke).
+func appendQuery(path, query string) string {
+	sep := "?"
+	if strings.Contains(path, "?") {
+		sep = "&"
+	}
+	return path + sep + query
+}
+
 // redirectWithError sends the user back to path with message shown as a
 // banner on arrival (cf. render's Error auto-injection) instead of
 // http.Error's bare-text response replacing the whole page -- for a
@@ -168,7 +185,7 @@ func render(w http.ResponseWriter, r *http.Request, layoutTmpl, page string, dat
 // away on the very page this redirects back to), not an actual server
 // failure.
 func redirectWithError(w http.ResponseWriter, r *http.Request, path, message string) {
-	http.Redirect(w, r, path+"?error="+url.QueryEscape(message), http.StatusSeeOther)
+	http.Redirect(w, r, appendQuery(path, "error="+url.QueryEscape(message)), http.StatusSeeOther)
 }
 
 // redirectWithSaved is redirectWithError's success counterpart, for a
@@ -179,7 +196,7 @@ func redirectWithError(w http.ResponseWriter, r *http.Request, path, message str
 // one-shot showToast('Saved', 'success') on arrival, same one-reload
 // lifetime as Error.
 func redirectWithSaved(w http.ResponseWriter, r *http.Request, path string) {
-	http.Redirect(w, r, path+"?saved=1", http.StatusSeeOther)
+	http.Redirect(w, r, appendQuery(path, "saved=1"), http.StatusSeeOther)
 }
 
 // redirectWithSavedMessage is redirectWithSaved with a specific toast
@@ -187,7 +204,14 @@ func redirectWithSaved(w http.ResponseWriter, r *http.Request, path string) {
 // be the wrong word (nothing was saved, an action ran) but the same
 // one-shot "this succeeded" feedback is still needed.
 func redirectWithSavedMessage(w http.ResponseWriter, r *http.Request, path, message string) {
-	http.Redirect(w, r, path+"?saved=1&saved_msg="+url.QueryEscape(message), http.StatusSeeOther)
+	http.Redirect(w, r, appendSavedMessage(path, message), http.StatusSeeOther)
+}
+
+// appendSavedMessage is redirectWithSavedMessage's query-building half,
+// exposed directly for a caller whose redirect target already carries
+// its own query string.
+func appendSavedMessage(path, message string) string {
+	return appendQuery(path, "saved=1&saved_msg="+url.QueryEscape(message))
 }
 
 // dashboardHandler was the last mocked page -- every stat and every row
@@ -349,7 +373,7 @@ func (a *app) approveHostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/hosts", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/hosts", "Agent approved")
 }
 
 // rejectHostHandler serves POST /hosts/{id}/reject — the "Reject"
@@ -362,7 +386,7 @@ func (a *app) rejectHostHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, "/hosts", "could not reject this host: "+err.Error())
 		return
 	}
-	http.Redirect(w, r, "/hosts", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/hosts", "Agent rejected")
 }
 
 // setHostAddressHandler serves POST /hosts/{id}/address — a reachable
@@ -918,7 +942,7 @@ func (a *app) regenerateGitConnectionKeyHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, "could not regenerate key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/git-connections/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/git-connections/"+id, "SSH key regenerated")
 }
 
 // renameGitConnectionHandler serves POST /git-connections/{id}/rename.
@@ -1000,7 +1024,7 @@ func (a *app) deleteGitConnectionHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/git-connections", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/git-connections", "Git connection deleted")
 }
 
 func (a *app) newGitConnectionFormHandler(w http.ResponseWriter, r *http.Request) {
@@ -1140,7 +1164,7 @@ func (a *app) updateStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks/"+id, "Compose file saved")
 }
 
 // updateStackSecretHandler serves POST /stacks/{id}/secrets — local
@@ -1225,7 +1249,7 @@ func (a *app) restoreStackRevisionHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks/"+id, "Revision restored")
 }
 
 var slugRe = regexp.MustCompile(`[^a-z0-9-]+`)
@@ -1577,7 +1601,7 @@ func (a *app) forcePollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pollStack(a, id)
-	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks/"+id, "Poll triggered")
 }
 
 // hooksHandler serves POST /hooks/{id} — the webhook receiver, on the UI
@@ -1659,7 +1683,7 @@ func (a *app) deployStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks/"+id, "Deployment queued")
 }
 
 // undeployStackHandler serves POST /stacks/{id}/undeploy — the "Undeploy"
@@ -1683,7 +1707,7 @@ func (a *app) undeployStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks/"+id, "Undeploy queued")
 }
 
 // deleteStackHandler serves POST /stacks/{id}/delete. Refuses to delete
@@ -1722,7 +1746,7 @@ func (a *app) deleteStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	http.Redirect(w, r, "/stacks", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/stacks", "Stack deleted")
 }
 
 // containersHandler and containerDetailHandler moved to containers.go —

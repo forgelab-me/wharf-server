@@ -66,8 +66,10 @@ func (a *app) deleteImagesHandler(w http.ResponseWriter, r *http.Request) {
 	// snapshot over the tunnel (debounced ~300ms, cf. tunnel.go), which
 	// routinely loses the race against this redirect landing. Without
 	// it the just-deleted image still shows until a manual reload. cf.
-	// layout.html's poll-and-replace script.
-	http.Redirect(w, r, "/images?refreshing=1", http.StatusSeeOther)
+	// layout.html's poll-and-replace script. The toast fires immediately
+	// regardless -- the deletion itself already succeeded above, only the
+	// table's own refresh is what's still catching up.
+	http.Redirect(w, r, appendSavedMessage("/images?refreshing=1", fmt.Sprintf("%d image(s) deleted", len(refs))), http.StatusSeeOther)
 }
 
 func (a *app) imagesHandler(w http.ResponseWriter, r *http.Request) {

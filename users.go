@@ -56,7 +56,7 @@ func (a *app) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not create user (username already taken?): "+err.Error(), http.StatusConflict)
 		return
 	}
-	http.Redirect(w, r, "/users", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/users", "User created")
 }
 
 func (a *app) setUserRoleHandler(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +70,7 @@ func (a *app) setUserRoleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	http.Redirect(w, r, "/users", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/users", "Role updated")
 }
 
 func (a *app) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -79,7 +79,7 @@ func (a *app) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
-	http.Redirect(w, r, "/users", http.StatusSeeOther)
+	redirectWithSavedMessage(w, r, "/users", "User deleted")
 }
 
 // resetUserPasswordHandler serves POST /users/{username}/reset-password.
