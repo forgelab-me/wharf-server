@@ -1920,3 +1920,19 @@ func (s *Store) ListAudit(limit int) ([]AuditEntry, error) {
 	}
 	return out, rows.Err()
 }
+
+// BackupTo writes a consistent snapshot to path (which must not already
+// exist) for the backup feature (cf. server/backup.go). VACUUM INTO
+// rather than copying the live .db file byte-for-byte: this database
+// runs in WAL mode, so the main file alone can be missing recently
+// committed data still sitting in the WAL -- VACUUM INTO produces a
+// single self-contained file with everything merged in, safe to read
+// without needing the -wal/-shm siblings alongside it, and without
+// blocking concurrent readers/writers any more than an ordinary query
+// would.
+func (s *Store) BackupTo(path string) error {
+	if _, err := s.db.Exec(`VACUUM INTO ?`, path); err != nil {
+		return fmt.Errorf("backup store: %w", err)
+	}
+	return nil
+}

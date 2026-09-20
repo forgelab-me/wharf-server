@@ -659,3 +659,16 @@ func (c *Custodian) DeleteOIDCConfig() error {
 	}
 	return nil
 }
+
+// BackupTo writes a consistent snapshot to path (which must not already
+// exist), same VACUUM INTO approach as internal/store.Store.BackupTo --
+// this custodian isn't opened in WAL mode, but VACUUM INTO is still the
+// right primitive: a single self-contained file, safe to read back
+// without racing whatever write this process might be doing at the
+// same moment.
+func (c *Custodian) BackupTo(path string) error {
+	if _, err := c.db.Exec(`VACUUM INTO ?`, path); err != nil {
+		return fmt.Errorf("backup keys: %w", err)
+	}
+	return nil
+}

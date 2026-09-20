@@ -59,6 +59,7 @@ type app struct {
 	cron        *cron.Cron
 	tunnels     *tunnelRegistry // connexions agent live, cf. tunnel.go
 	polls       *pollRegistry   // cron.EntryID par stack en polling, cf. poller.go
+	dataDir     string          // cf. backup.go -- where wharf.db/keys.db/identity actually live
 }
 
 type Stat struct {
@@ -1804,6 +1805,15 @@ func main() {
 		log.Fatal("data dir: ", err)
 	}
 
+	// Applied before anything below opens a database or binds the TLS
+	// identity into a listener -- neither can be safely swapped out from
+	// under an open connection or a live HTTPS server, so a restore (cf.
+	// backup.go's restoreBackupHandler) only ever stages files here and
+	// waits for the next process start to actually move them into place.
+	if err := applyPendingRestore(dataDir); err != nil {
+		log.Fatal("restore: ", err)
+	}
+
 	// Deux fichiers SQLite distincts : le store applicatif et le store du
 	// secrets-service ne partagent ni process logique ni accès — cf.
 	// ARCHITECTURE.md, "Garde des clés".
@@ -1851,7 +1861,7 @@ func main() {
 	fingerprint := identity.Fingerprint(cert.Certificate[0])
 	log.Println("controller identity:", fingerprint)
 
-	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry()}
+	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
 	// time (cronParser in poller.go) — registration must never accept a
@@ -1960,6 +1970,9 @@ func main() {
 	mux.HandleFunc("GET /settings/registries", requireAdmin(a.settingsRegistriesHandler))
 	mux.HandleFunc("POST /settings/registries", requireAdmin(a.setRegistryCredentialHandler))
 	mux.HandleFunc("POST /settings/registries/{host}/delete", requireAdmin(a.deleteRegistryCredentialHandler))
+	mux.HandleFunc("GET /settings/backup", requireAdmin(a.settingsBackupHandler))
+	mux.HandleFunc("POST /settings/backup/download", requireAdmin(a.downloadBackupHandler))
+	mux.HandleFunc("POST /settings/backup/restore", requireAdmin(a.restoreBackupHandler))
 	mux.HandleFunc("GET /users", requireAdmin(a.usersHandler))
 	mux.HandleFunc("GET /users/new", requireAdmin(a.newUserFormHandler))
 	mux.HandleFunc("POST /users", requireAdmin(a.createUserHandler))

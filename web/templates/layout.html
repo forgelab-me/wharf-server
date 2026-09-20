@@ -29,6 +29,7 @@
         <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
         <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
         <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
+        <a href="/settings/backup" class="{{if eq .Nav "backup"}}active{{end}}">Backup &amp; Restore</a>
         {{end}}
       </nav>
       <div class="sidebar-footer">
@@ -400,6 +401,13 @@
     document.querySelectorAll('.delete-git-connection-form').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         if (!confirm('Delete this Git connection permanently? Its stored key/credential is removed too.')) {
+          e.preventDefault();
+        }
+      });
+    });
+    document.querySelectorAll('.restore-backup-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Stage this backup for restore? Every stack, user, secret, and the controller\'s own identity will be replaced with what\'s in this file the next time the controller restarts.')) {
           e.preventDefault();
         }
       });

@@ -1,0 +1,36 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Download a backup</h2>
+  <p class="muted" style="font-size:12px;">A single file with everything that makes this controller work: every stack, host, user and audit entry, every stored secret and private key, and the controller's own identity — the certificate every enrolled agent has already pinned. Restoring it onto a fresh box lets existing agents reconnect without re-enrolling. Taken live, safe to run any time; doesn't pause or lock anything.</p>
+  <form method="post" action="/settings/backup/download">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Passphrase (optional)</label>
+      <input type="password" name="passphrase" placeholder="Leave blank for an unencrypted download" autocomplete="new-password">
+      <p class="muted" style="font-size:12px; margin-top:4px;">Without one, the downloaded file contains every secret and private key in plain text — treat it accordingly. With one, the whole archive is encrypted (age's passphrase mode) and useless without it; there is no recovery if you lose the passphrase.</p>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Download backup</button>
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  <h2>Restore from a backup</h2>
+  <p class="muted" style="font-size:12px;"><strong>This replaces everything on this controller</strong> — every stack, user, secret and the controller's identity — with what's in the file. The current data isn't deleted, only set aside with a timestamp suffix in the data directory, but it stops being what the app reads from the moment this applies. A restore is staged, not immediate: after uploading, restart the controller (<code>docker compose up -d --force-recreate</code>, or an equivalent restart) for it to actually take effect.</p>
+  <form method="post" action="/settings/backup/restore" enctype="multipart/form-data" class="restore-backup-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Backup file</label>
+      <input type="file" name="file" required accept=".tar.gz,.age">
+    </div>
+    <div class="form-row">
+      <label>Passphrase</label>
+      <input type="password" name="passphrase" placeholder="Only needed if this backup was downloaded with one" autocomplete="off">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-ghost">Stage restore</button>
+    </div>
+  </form>
+</section>
+{{end}}
