@@ -63,6 +63,7 @@ func (a *app) deleteNetworksHandler(w http.ResponseWriter, r *http.Request) {
 	// already happened on the real daemon, but host_networks only catches
 	// up once the agent's next debounced snapshot arrives, which this
 	// redirect routinely beats. cf. layout.html's poll-and-replace script.
+	a.audit(r, "network.delete", fmt.Sprintf("%d network(s)", len(refs)), strings.Join(refs, ", "))
 	http.Redirect(w, r, appendSavedMessage("/networks?refreshing=1", fmt.Sprintf("%d network(s) deleted", len(refs))), http.StatusSeeOther)
 }
 

@@ -109,6 +109,9 @@ func (a *app) setRegistryCredentialHandler(w http.ResponseWriter, r *http.Reques
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Never the password/token -- host/username are already how the
+	// registry itself identifies this credential.
+	a.audit(r, "registry.set", host, "username "+username)
 	redirectWithSaved(w, r, "/settings/registries")
 }
 
@@ -125,5 +128,6 @@ func (a *app) deleteRegistryCredentialHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "registry.delete", host, "")
 	redirectWithSavedMessage(w, r, "/settings/registries", "Registry credential removed")
 }

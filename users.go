@@ -56,6 +56,7 @@ func (a *app) createUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "could not create user (username already taken?): "+err.Error(), http.StatusConflict)
 		return
 	}
+	a.audit(r, "user.create", username, role)
 	redirectWithSavedMessage(w, r, "/users", "User created")
 }
 
@@ -70,6 +71,7 @@ func (a *app) setUserRoleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
+	a.audit(r, "user.role_change", username, role)
 	redirectWithSavedMessage(w, r, "/users", "Role updated")
 }
 
@@ -79,6 +81,7 @@ func (a *app) deleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusConflict)
 		return
 	}
+	a.audit(r, "user.delete", username, "")
 	redirectWithSavedMessage(w, r, "/users", "User deleted")
 }
 
@@ -115,6 +118,9 @@ func (a *app) resetUserPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Never the password itself, same as everywhere else -- only that a
+	// reset happened.
+	a.audit(r, "user.reset_password", username, "")
 	render(w, r, "layout", "user_password_reset.html", map[string]any{
 		"Title":       "Password reset",
 		"Nav":         "users",

@@ -213,6 +213,7 @@ func (a *app) volumeBrowseRenameHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "rename failed: "+msg)
 		return
 	}
+	a.audit(r, "volume.file_rename", name, relPath+" -> "+newRelPath)
 	http.Redirect(w, r, appendSavedMessage(backTo, "Renamed"), http.StatusSeeOther)
 }
 
@@ -245,6 +246,7 @@ func (a *app) volumeBrowseDeleteHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "delete failed: "+msg)
 		return
 	}
+	a.audit(r, "volume.file_delete", name, relPath)
 	http.Redirect(w, r, appendSavedMessage(backTo, "Deleted"), http.StatusSeeOther)
 }
 
@@ -305,6 +307,7 @@ func (a *app) volumeBrowseUploadHandler(w http.ResponseWriter, r *http.Request) 
 		redirectWithError(w, r, backTo, "upload failed: "+msg)
 		return
 	}
+	a.audit(r, "volume.file_upload", name, destRelPath)
 	http.Redirect(w, r, appendSavedMessage(backTo, "Uploaded"), http.StatusSeeOther)
 }
 
@@ -393,6 +396,7 @@ func (a *app) volumeBrowseSaveHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, backTo, "save failed: "+msg)
 		return
 	}
+	a.audit(r, "volume.file_save", name, relPath)
 	// backTo already carries its own ?path=... query -- appendSavedMessage,
 	// not redirectWithSaved, so this doesn't produce a second "?".
 	http.Redirect(w, r, appendSavedMessage(backTo, "Saved"), http.StatusSeeOther)

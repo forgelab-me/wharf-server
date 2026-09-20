@@ -65,5 +65,6 @@ func (a *app) runContainerAction(w http.ResponseWriter, r *http.Request, action 
 	if action == "stop" {
 		msg = "Container stopped"
 	}
+	a.audit(r, "container."+action, c.Name, "host "+c.HostID)
 	redirectWithSavedMessage(w, r, target, msg)
 }

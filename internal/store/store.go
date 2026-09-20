@@ -225,6 +225,14 @@ func Open(path string) (*Store, error) {
 		username   TEXT NOT NULL,
 		created_at TEXT NOT NULL DEFAULT (datetime('now')),
 		expires_at TEXT NOT NULL
+	);
+	CREATE TABLE IF NOT EXISTS audit_log (
+		id         INTEGER PRIMARY KEY AUTOINCREMENT,
+		username   TEXT NOT NULL,
+		action     TEXT NOT NULL,
+		target     TEXT NOT NULL DEFAULT '',
+		detail     TEXT NOT NULL DEFAULT '',
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
 	);`
 	// Migration: host_images' primary key used to be (host_id,
 	// repository, tag) -- itself an earlier fix for a multi-tag image's
@@ -1860,4 +1868,55 @@ func (s *Store) DeleteSession(token string) error {
 		return fmt.Errorf("delete session: %w", err)
 	}
 	return nil
+}
+
+// AuditEntry is one row of the admin-facing audit trail (cf.
+// server/audit.go) -- who did what, to which resource, and when. Not a
+// security control (nothing here is tamper-evident or exported off the
+// box) -- just accountability once more than one admin/operator can
+// touch the same instance.
+type AuditEntry struct {
+	ID        int64
+	Username  string
+	Action    string
+	Target    string
+	Detail    string
+	CreatedAt string
+}
+
+// RecordAudit appends one row -- always append-only, no update/delete
+// path, since editing your own audit trail after the fact defeats the
+// point of having one.
+func (s *Store) RecordAudit(username, action, target, detail string) error {
+	_, err := s.db.Exec(
+		`INSERT INTO audit_log (username, action, target, detail) VALUES (?, ?, ?, ?)`,
+		username, action, target, detail,
+	)
+	if err != nil {
+		return fmt.Errorf("record audit entry: %w", err)
+	}
+	return nil
+}
+
+// ListAudit returns the most recent entries, newest first, capped at
+// limit -- no pagination yet (cf. the /audit-log page), same "build what
+// today's scale actually needs" call as image polling's fixed interval;
+// revisit if a real instance's history ever makes 500 too few to find
+// something in.
+func (s *Store) ListAudit(limit int) ([]AuditEntry, error) {
+	rows, err := s.db.Query(`SELECT id, username, action, target, detail, created_at FROM audit_log ORDER BY id DESC LIMIT ?`, limit)
+	if err != nil {
+		return nil, fmt.Errorf("list audit entries: %w", err)
+	}
+	defer rows.Close()
+
+	var out []AuditEntry
+	for rows.Next() {
+		var e AuditEntry
+		if err := rows.Scan(&e.ID, &e.Username, &e.Action, &e.Target, &e.Detail, &e.CreatedAt); err != nil {
+			return nil, fmt.Errorf("scan audit entry: %w", err)
+		}
+		out = append(out, e)
+	}
+	return out, rows.Err()
 }

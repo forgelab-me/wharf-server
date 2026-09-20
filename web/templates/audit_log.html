@@ -1,0 +1,44 @@
+{{define "content"}}
+<div class="toolbar toolbar-split">
+  <div class="filter-group">
+    <input type="search" class="search-filter audit-search" placeholder="Filter by user, action, or target...">
+  </div>
+  <div></div>
+</div>
+<div class="panel">
+  {{if .Entries}}
+  <table>
+    <thead>
+      <tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Detail</th></tr>
+    </thead>
+    <tbody>
+      {{range .Entries}}
+      <tr>
+        <td class="muted">{{.CreatedAt}}</td>
+        <td>{{.Username}}</td>
+        <td><code>{{.Action}}</code></td>
+        <td>{{.Target}}</td>
+        <td class="muted">{{.Detail}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  <p class="muted" style="font-size:12px; margin-top:14px;">Showing the most recent {{len .Entries}} entries.</p>
+  {{else}}
+  <p class="muted">Nothing recorded yet.</p>
+  {{end}}
+</div>
+<script>
+  (function () {
+    var search = document.querySelector('.audit-search');
+    var rows = document.querySelectorAll('table tbody tr');
+    if (!search || !rows.length) return;
+    search.addEventListener('input', function () {
+      var q = search.value.trim().toLowerCase();
+      rows.forEach(function (row) {
+        row.hidden = q !== '' && row.textContent.toLowerCase().indexOf(q) === -1;
+      });
+    });
+  })();
+</script>
+{{end}}

@@ -373,6 +373,7 @@ func (a *app) approveHostHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "host.approve", id, "")
 	redirectWithSavedMessage(w, r, "/hosts", "Agent approved")
 }
 
@@ -386,6 +387,7 @@ func (a *app) rejectHostHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, "/hosts", "could not reject this host: "+err.Error())
 		return
 	}
+	a.audit(r, "host.reject", id, "")
 	redirectWithSavedMessage(w, r, "/hosts", "Agent rejected")
 }
 
@@ -401,6 +403,7 @@ func (a *app) setHostAddressHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "host.set_address", id, address)
 	redirectWithSaved(w, r, "/hosts")
 }
 
@@ -418,6 +421,7 @@ func (a *app) setHostNameHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, "/hosts/"+id, err.Error())
 		return
 	}
+	a.audit(r, "host.rename", id, name)
 	redirectWithSaved(w, r, "/hosts/"+id)
 }
 
@@ -942,6 +946,7 @@ func (a *app) regenerateGitConnectionKeyHandler(w http.ResponseWriter, r *http.R
 		http.Error(w, "could not regenerate key: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "git_connection.regenerate_key", conn.Name, "")
 	redirectWithSavedMessage(w, r, "/git-connections/"+id, "SSH key regenerated")
 }
 
@@ -957,6 +962,7 @@ func (a *app) renameGitConnectionHandler(w http.ResponseWriter, r *http.Request)
 		redirectWithError(w, r, "/git-connections/"+id, err.Error())
 		return
 	}
+	a.audit(r, "git_connection.rename", id, name)
 	redirectWithSaved(w, r, "/git-connections/"+id)
 }
 
@@ -994,6 +1000,7 @@ func (a *app) updateGitConnectionCredentialHandler(w http.ResponseWriter, r *htt
 		redirectWithError(w, r, "/git-connections/"+id, "could not store credential: "+err.Error())
 		return
 	}
+	a.audit(r, "git_connection.update_credential", conn.Name, "username "+username)
 	redirectWithSaved(w, r, "/git-connections/"+id)
 }
 
@@ -1003,7 +1010,8 @@ func (a *app) updateGitConnectionCredentialHandler(w http.ResponseWriter, r *htt
 // stacks share can't be pulled out from under them by mistake.
 func (a *app) deleteGitConnectionHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, err := a.store.GetGitConnection(id); err != nil {
+	conn, err := a.store.GetGitConnection(id)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -1024,6 +1032,7 @@ func (a *app) deleteGitConnectionHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "git_connection.delete", conn.Name, "")
 	redirectWithSavedMessage(w, r, "/git-connections", "Git connection deleted")
 }
 
@@ -1086,6 +1095,7 @@ func (a *app) createGitConnectionHandler(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	a.audit(r, "git_connection.create", name, authKind)
 	http.Redirect(w, r, "/git-connections/"+id, http.StatusSeeOther)
 }
 
@@ -1164,6 +1174,7 @@ func (a *app) updateStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.compose_update", st.Name, "")
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Compose file saved")
 }
 
@@ -1193,6 +1204,7 @@ func (a *app) updateStackSecretHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		a.audit(r, "stack.secrets_clear", st.Name, "")
 		redirectWithSaved(w, r, "/stacks/"+id)
 		return
 	}
@@ -1211,6 +1223,10 @@ func (a *app) updateStackSecretHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Never the values themselves -- only that a save happened, same
+	// boundary the rest of this app already holds (cf. ARCHITECTURE.md,
+	// "aucun endpoint ne renvoie jamais la valeur d'un secret").
+	a.audit(r, "stack.secrets_update", st.Name, "")
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
@@ -1249,6 +1265,7 @@ func (a *app) restoreStackRevisionHandler(w http.ResponseWriter, r *http.Request
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.revision_restore", st.Name, fmt.Sprintf("revision %d", revID))
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Revision restored")
 }
 
@@ -1374,6 +1391,7 @@ func (a *app) createStackHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	a.audit(r, "stack.create", name, sourceType+" stack, trigger "+trigger)
 	http.Redirect(w, r, "/stacks/"+id, http.StatusSeeOther)
 }
 
@@ -1501,6 +1519,7 @@ func (a *app) setPollScheduleHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "schedule saved but could not be applied: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.poll_schedule_change", st.Name, schedule)
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
@@ -1565,6 +1584,7 @@ func (a *app) setStackTriggerHandler(w http.ResponseWriter, r *http.Request) {
 	} else {
 		unregisterPolling(a, id)
 	}
+	a.audit(r, "stack.trigger_change", st.Name, trigger)
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
@@ -1580,6 +1600,7 @@ func (a *app) renameStackHandler(w http.ResponseWriter, r *http.Request) {
 		redirectWithError(w, r, "/stacks/"+id, err.Error())
 		return
 	}
+	a.audit(r, "stack.rename", id, name)
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
@@ -1601,6 +1622,7 @@ func (a *app) forcePollHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	pollStack(a, id)
+	a.audit(r, "stack.poll_now", st.Name, "")
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Poll triggered")
 }
 
@@ -1641,6 +1663,12 @@ func (a *app) hooksHandler(w http.ResponseWriter, r *http.Request) {
 	if _, err := a.store.EnqueueDeployment(st.ID, st.Host, "webhook", "up"); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	// Not a.audit(r, ...): this request never went through requireAuth, so
+	// there's no session username in context to attribute it to -- logged
+	// under a fixed "webhook" actor instead of a blank one.
+	if err := a.store.RecordAudit("webhook", "stack.deploy_webhook", st.Name, ""); err != nil {
+		log.Println("audit:", err)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1683,6 +1711,7 @@ func (a *app) deployStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.deploy", st.Name, "")
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Deployment queued")
 }
 
@@ -1707,6 +1736,7 @@ func (a *app) undeployStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.undeploy", st.Name, "")
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Undeploy queued")
 }
 
@@ -1724,7 +1754,8 @@ func (a *app) undeployStackHandler(w http.ResponseWriter, r *http.Request) {
 // deployed (failed, or already undeployed) deletes clean.
 func (a *app) deleteStackHandler(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
-	if _, err := a.store.GetStack(id); err != nil {
+	st, err := a.store.GetStack(id)
+	if err != nil {
 		http.NotFound(w, r)
 		return
 	}
@@ -1746,6 +1777,7 @@ func (a *app) deleteStackHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.delete", st.Name, "")
 	redirectWithSavedMessage(w, r, "/stacks", "Stack deleted")
 }
 
@@ -1934,6 +1966,7 @@ func main() {
 	mux.HandleFunc("POST /users/{username}/role", requireAdmin(a.setUserRoleHandler))
 	mux.HandleFunc("POST /users/{username}/reset-password", requireAdmin(a.resetUserPasswordHandler))
 	mux.HandleFunc("POST /users/{username}/delete", requireAdmin(a.deleteUserHandler))
+	mux.HandleFunc("GET /audit-log", requireAdmin(a.auditLogHandler))
 
 	// Canal agent, séparé de l'UI : enrôlement + commandes de déploiement.
 	// HTTPS uniquement — l'épinglage par empreinte n'a de sens qu'avec TLS.

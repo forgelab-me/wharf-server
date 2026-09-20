@@ -73,6 +73,9 @@ func (a *app) setOIDCConfigHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	// Never the client secret -- issuer/client id are already public-ish
+	// (visible in the provider's own redirect), the secret never is.
+	a.audit(r, "oidc.configure", issuerURL, "client_id "+clientID)
 	redirectWithSaved(w, r, "/settings/authentication")
 }
 
@@ -89,5 +92,6 @@ func (a *app) deleteOIDCConfigHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "oidc.remove", "", "")
 	redirectWithSavedMessage(w, r, "/settings/authentication", "SSO configuration removed")
 }

@@ -177,6 +177,7 @@ func (a *app) setImagePolicyHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.image_policy_change", id, service+" -> "+policy)
 	redirectWithSaved(w, r, "/stacks/"+id)
 }
 
@@ -205,5 +206,6 @@ func (a *app) applyImageUpdateHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+	a.audit(r, "stack.image_update_apply", st.Name, r.PathValue("service"))
 	redirectWithSavedMessage(w, r, "/stacks/"+id, "Update queued")
 }

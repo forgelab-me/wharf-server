@@ -69,6 +69,7 @@ func (a *app) deleteImagesHandler(w http.ResponseWriter, r *http.Request) {
 	// layout.html's poll-and-replace script. The toast fires immediately
 	// regardless -- the deletion itself already succeeded above, only the
 	// table's own refresh is what's still catching up.
+	a.audit(r, "image.delete", fmt.Sprintf("%d image(s)", len(refs)), strings.Join(refs, ", "))
 	http.Redirect(w, r, appendSavedMessage("/images?refreshing=1", fmt.Sprintf("%d image(s) deleted", len(refs))), http.StatusSeeOther)
 }
 
