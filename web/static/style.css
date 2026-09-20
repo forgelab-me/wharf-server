@@ -441,6 +441,41 @@ option { background-color: var(--bg-elevated); color: var(--text); }
    room for the chevron (cf. the global "select" rule) that a shared
    "padding: 9px 12px" would clobber. */
 .form-row select { width: 100%; }
+
+/* A plain kv-table's fixed-width label column plus a narrow number
+   input left most of the panel's width empty -- a responsive grid of
+   compact label/input pairs instead, wrapping to as many columns as
+   fit rather than one long single-column list. */
+.retention-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px 28px;
+  margin: 14px 0;
+}
+.retention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.retention-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  color: var(--text);
+}
+.retention-input {
+  width: 64px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
 .form-row textarea { font-family: var(--mono); font-size: 13px; resize: vertical; }
 .form-row input:focus, .form-row textarea:focus { outline: none; border-color: var(--accent); }
 fieldset.form-row { border: none; padding: 0; }

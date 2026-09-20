@@ -233,6 +233,10 @@ func Open(path string) (*Store, error) {
 		target     TEXT NOT NULL DEFAULT '',
 		detail     TEXT NOT NULL DEFAULT '',
 		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE IF NOT EXISTS audit_retention (
+		category    TEXT PRIMARY KEY,
+		retain_days INTEGER NOT NULL DEFAULT 0
 	);`
 	// Migration: host_images' primary key used to be (host_id,
 	// repository, tag) -- itself an earlier fix for a multi-tag image's
@@ -1919,6 +1923,61 @@ func (s *Store) ListAudit(limit int) ([]AuditEntry, error) {
 		out = append(out, e)
 	}
 	return out, rows.Err()
+}
+
+// SetAuditRetention sets how many days of audit_log entries to keep for
+// one category (the part of an action before its first "."), 0 meaning
+// forever. A category with no row here has never had its default
+// touched -- GetAuditRetentionAll and PruneAuditOlderThan both treat a
+// missing entry the same as an explicit 0.
+func (s *Store) SetAuditRetention(category string, retainDays int) error {
+	_, err := s.db.Exec(
+		`INSERT INTO audit_retention (category, retain_days) VALUES (?, ?)
+		 ON CONFLICT(category) DO UPDATE SET retain_days = excluded.retain_days`,
+		category, retainDays,
+	)
+	if err != nil {
+		return fmt.Errorf("set audit retention for %q: %w", category, err)
+	}
+	return nil
+}
+
+// GetAuditRetentionAll returns every category that has an explicit
+// retention set -- a category not present here is "forever" by default,
+// same as retain_days=0 would mean if it were present.
+func (s *Store) GetAuditRetentionAll() (map[string]int, error) {
+	rows, err := s.db.Query(`SELECT category, retain_days FROM audit_retention`)
+	if err != nil {
+		return nil, fmt.Errorf("list audit retention: %w", err)
+	}
+	defer rows.Close()
+
+	out := map[string]int{}
+	for rows.Next() {
+		var category string
+		var days int
+		if err := rows.Scan(&category, &days); err != nil {
+			return nil, fmt.Errorf("scan audit retention: %w", err)
+		}
+		out[category] = days
+	}
+	return out, rows.Err()
+}
+
+// PruneAuditOlderThan deletes audit_log rows in the given category
+// (matched against the "category.verb" action prefix -- cf. AuditEntry)
+// older than cutoff, and returns how many rows were removed. Called only
+// for a category with a real (>0) retention configured; there is no
+// caller that passes a zero-value cutoff meaning "delete everything".
+func (s *Store) PruneAuditOlderThan(category string, cutoff time.Time) (int64, error) {
+	res, err := s.db.Exec(
+		`DELETE FROM audit_log WHERE (action = ? OR action LIKE ?) AND created_at < ?`,
+		category, category+".%", cutoff.UTC().Format("2006-01-02 15:04:05"),
+	)
+	if err != nil {
+		return 0, fmt.Errorf("prune audit log for %q: %w", category, err)
+	}
+	return res.RowsAffected()
 }
 
 // BackupTo writes a consistent snapshot to path (which must not already

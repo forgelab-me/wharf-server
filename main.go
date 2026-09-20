@@ -1900,6 +1900,9 @@ func main() {
 	if err := registerNotificationChecks(a); err != nil {
 		log.Fatal("register notification checks: ", err)
 	}
+	if err := registerAuditRetention(a); err != nil {
+		log.Fatal("register audit retention: ", err)
+	}
 	a.cron.Start()
 	defer a.cron.Stop()
 
@@ -1999,6 +2002,7 @@ func main() {
 	mux.HandleFunc("POST /users/{username}/reset-password", requireAdmin(a.resetUserPasswordHandler))
 	mux.HandleFunc("POST /users/{username}/delete", requireAdmin(a.deleteUserHandler))
 	mux.HandleFunc("GET /audit-log", requireAdmin(a.auditLogHandler))
+	mux.HandleFunc("POST /audit-log/retention", requireAdmin(a.setAuditRetentionHandler))
 
 	// Canal agent, séparé de l'UI : enrôlement + commandes de déploiement.
 	// HTTPS uniquement — l'épinglage par empreinte n'a de sens qu'avec TLS.

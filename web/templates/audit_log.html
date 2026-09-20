@@ -28,6 +28,25 @@
   <p class="muted">Nothing recorded yet.</p>
   {{end}}
 </div>
+
+<section class="panel">
+  <h2>Retention</h2>
+  <p class="muted" style="font-size:12px;">How long to keep entries in each category before they're pruned, checked once a day. Blank or <code>0</code> keeps them forever — the default for every category until set otherwise.</p>
+  <form method="post" action="/audit-log/retention">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="retention-grid">
+      {{range .Categories}}
+      <label class="retention-row">
+        <span>{{.Label}}</span>
+        <span class="retention-input-group"><input type="number" name="retain_{{.Key}}" min="0" step="1" value="{{index $.Retention .Key}}" placeholder="forever" class="retention-input"> days</span>
+      </label>
+      {{end}}
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</section>
 <script>
   (function () {
     var search = document.querySelector('.audit-search');

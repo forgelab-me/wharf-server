@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.10.0] - 2026-09-20
+
+### Added
+- Configurable retention for the audit log, per category (containers, stacks, hosts, users, Git connections, registry credentials, SSO, images, volumes, networks, notifications, backup) rather than one blanket setting — a new panel on `/audit-log` with a days-to-keep field per category, `0`/blank meaning forever (the default until set otherwise). Checked once a day; a category never touched keeps every entry indefinitely.
+
 ## [0.9.0] - 2026-09-20
 
 ### Added
