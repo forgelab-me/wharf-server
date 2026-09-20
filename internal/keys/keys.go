@@ -77,6 +77,12 @@ func Open(path string) (*Custodian, error) {
 		operator_group  TEXT NOT NULL DEFAULT '',
 		disable_local_auth INTEGER NOT NULL DEFAULT 0,
 		updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE IF NOT EXISTS notification_target (
+		id         INTEGER PRIMARY KEY CHECK (id = 1),
+		kind       TEXT NOT NULL,
+		url        TEXT NOT NULL,
+		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 	);`
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()
@@ -656,6 +662,52 @@ func (c *Custodian) GetOIDCConfig() (cfg OIDCConfig, ok bool, err error) {
 func (c *Custodian) DeleteOIDCConfig() error {
 	if _, err := c.db.Exec(`DELETE FROM oidc_config WHERE id = 1`); err != nil {
 		return fmt.Errorf("delete oidc config: %w", err)
+	}
+	return nil
+}
+
+// NotificationTarget is the single configured destination for the
+// events server/notifications.go fires -- a webhook URL is closer to a
+// credential than to ordinary settings (it grants "post as this
+// bot/channel" to whoever holds it), so it lives here with everything
+// else this custodian guards, not in the main application database.
+type NotificationTarget struct {
+	Kind string // "slack" | "discord" | "ntfy" | "generic"
+	URL  string
+}
+
+// SetNotificationTarget stores (or replaces) the one configured target,
+// same single-row upsert shape as SetOIDCConfig.
+func (c *Custodian) SetNotificationTarget(kind, url string) error {
+	_, err := c.db.Exec(
+		`INSERT INTO notification_target (id, kind, url) VALUES (1, ?, ?)
+		 ON CONFLICT(id) DO UPDATE SET kind = excluded.kind, url = excluded.url, updated_at = datetime('now')`,
+		kind, url,
+	)
+	if err != nil {
+		return fmt.Errorf("set notification target: %w", err)
+	}
+	return nil
+}
+
+// GetNotificationTarget returns the configured target; ok is false if
+// none is set.
+func (c *Custodian) GetNotificationTarget() (target NotificationTarget, ok bool, err error) {
+	err = c.db.QueryRow(`SELECT kind, url FROM notification_target WHERE id = 1`).Scan(&target.Kind, &target.URL)
+	if errors.Is(err, sql.ErrNoRows) {
+		return NotificationTarget{}, false, nil
+	}
+	if err != nil {
+		return NotificationTarget{}, false, fmt.Errorf("get notification target: %w", err)
+	}
+	return target, true, nil
+}
+
+// DeleteNotificationTarget removes the configured target -- events are
+// simply not sent anywhere afterward, nothing else observes this.
+func (c *Custodian) DeleteNotificationTarget() error {
+	if _, err := c.db.Exec(`DELETE FROM notification_target WHERE id = 1`); err != nil {
+		return fmt.Errorf("delete notification target: %w", err)
 	}
 	return nil
 }

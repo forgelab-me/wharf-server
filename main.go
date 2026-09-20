@@ -60,6 +60,7 @@ type app struct {
 	tunnels     *tunnelRegistry // connexions agent live, cf. tunnel.go
 	polls       *pollRegistry   // cron.EntryID par stack en polling, cf. poller.go
 	dataDir     string          // cf. backup.go -- where wharf.db/keys.db/identity actually live
+	notifyState *notifyState    // cf. notifications.go -- "already notified" tracking, level-triggered events
 }
 
 type Stat struct {
@@ -570,6 +571,7 @@ func (a *app) commandsHandler(w http.ResponseWriter, r *http.Request) {
 	st, err := a.store.GetStack(dep.StackID)
 	if err != nil {
 		_ = a.store.CompleteDeployment(dep.ID, "failed", "stack no longer exists: "+err.Error())
+		a.notifyDeploymentFailed(dep.StackID, "stack no longer exists: "+err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -610,6 +612,7 @@ func (a *app) commandsHandler(w http.ResponseWriter, r *http.Request) {
 		auths, err := a.keys.AllRegistryCredentials()
 		if err != nil {
 			_ = a.store.CompleteDeployment(dep.ID, "failed", "could not load registry credentials: "+err.Error())
+			a.notifyDeploymentFailed(st.Name, "could not load registry credentials: "+err.Error())
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -630,6 +633,7 @@ func (a *app) commandsHandler(w http.ResponseWriter, r *http.Request) {
 			authKind, sshPriv, httpUser, httpPass, err := a.resolveGitAuth(st)
 			if err != nil {
 				_ = a.store.CompleteDeployment(dep.ID, "failed", "could not load git credential: "+err.Error())
+				a.notifyDeploymentFailed(st.Name, "could not load git credential: "+err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -649,6 +653,7 @@ func (a *app) commandsHandler(w http.ResponseWriter, r *http.Request) {
 				plaintext, err := a.keys.Decrypt(st.ID, st.EncryptedSecret)
 				if err != nil {
 					_ = a.store.CompleteDeployment(dep.ID, "failed", "could not decrypt secrets: "+err.Error())
+					a.notifyDeploymentFailed(st.Name, "could not decrypt secrets: "+err.Error())
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
@@ -744,6 +749,13 @@ func (a *app) deploymentResultHandler(w http.ResponseWriter, r *http.Request) {
 	if err := a.store.CompleteDeployment(id, req.Status, req.Output); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	if req.Status == "failed" {
+		stackName := dep.StackID
+		if st, err := a.store.GetStack(dep.StackID); err == nil {
+			stackName = st.Name
+		}
+		a.notifyDeploymentFailed(stackName, req.Output)
 	}
 
 	// Fire-and-forget: image policy discovery/digest resync is bookkeeping
@@ -1861,7 +1873,7 @@ func main() {
 	fingerprint := identity.Fingerprint(cert.Certificate[0])
 	log.Println("controller identity:", fingerprint)
 
-	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir}
+	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState()}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
 	// time (cronParser in poller.go) — registration must never accept a
@@ -1884,6 +1896,9 @@ func main() {
 	}
 	if err := registerVersionChecking(a); err != nil {
 		log.Fatal("register version checking: ", err)
+	}
+	if err := registerNotificationChecks(a); err != nil {
+		log.Fatal("register notification checks: ", err)
 	}
 	a.cron.Start()
 	defer a.cron.Stop()
@@ -1973,6 +1988,10 @@ func main() {
 	mux.HandleFunc("GET /settings/backup", requireAdmin(a.settingsBackupHandler))
 	mux.HandleFunc("POST /settings/backup/download", requireAdmin(a.downloadBackupHandler))
 	mux.HandleFunc("POST /settings/backup/restore", requireAdmin(a.restoreBackupHandler))
+	mux.HandleFunc("GET /settings/notifications", requireAdmin(a.settingsNotificationsHandler))
+	mux.HandleFunc("POST /settings/notifications", requireAdmin(a.setNotificationTargetHandler))
+	mux.HandleFunc("POST /settings/notifications/delete", requireAdmin(a.deleteNotificationTargetHandler))
+	mux.HandleFunc("POST /settings/notifications/test", requireAdmin(a.testNotificationHandler))
 	mux.HandleFunc("GET /users", requireAdmin(a.usersHandler))
 	mux.HandleFunc("GET /users/new", requireAdmin(a.newUserFormHandler))
 	mux.HandleFunc("POST /users", requireAdmin(a.createUserHandler))

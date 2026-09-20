@@ -1,0 +1,45 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Notification target</h2>
+  <p class="muted" style="font-size:12px;">One webhook, fired on the events worth knowing about without staring at the UI: a deployment failing, an enrolled agent going dark, an agent or the controller itself falling behind on updates. Checked every few minutes for the level-triggered ones (disconnected/outdated) — a deployment failure fires immediately.</p>
+  {{if .Configured}}
+  <table class="kv-table">
+    <tr><th>Kind</th><td>{{.Target.Kind}}</td></tr>
+    <tr><th>URL</th><td class="muted">configured — never shown again once saved</td></tr>
+  </table>
+  <div class="row-actions" style="justify-content:flex-start; gap:8px; margin-top:10px;">
+    <form method="post" action="/settings/notifications/test" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost btn-sm">Send test</button>
+    </form>
+    <form method="post" action="/settings/notifications/delete" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+    </form>
+  </div>
+  {{else}}
+  <p class="muted">No notification target configured yet.</p>
+  {{end}}
+
+  <h3 style="margin-top:20px; font-size:14px;">{{if .Configured}}Replace{{else}}Add{{end}} a target</h3>
+  <form method="post" action="/settings/notifications">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Kind</label>
+      <select name="kind">
+        <option value="slack" {{if eq .Target.Kind "slack"}}selected{{end}}>Slack (incoming webhook)</option>
+        <option value="discord" {{if eq .Target.Kind "discord"}}selected{{end}}>Discord (webhook)</option>
+        <option value="ntfy" {{if eq .Target.Kind "ntfy"}}selected{{end}}>ntfy (topic URL)</option>
+        <option value="generic" {{if eq .Target.Kind "generic"}}selected{{end}}>Generic ({"text": "..."} JSON POST)</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Webhook URL</label>
+      <input type="password" name="url" placeholder="{{if .Configured}}Leave blank to keep the current one{{else}}e.g. https://hooks.slack.com/services/...{{end}}" autocomplete="off">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</section>
+{{end}}
