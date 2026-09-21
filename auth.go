@@ -20,6 +20,7 @@ import (
 	"crypto/subtle"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -361,11 +362,27 @@ func (a *app) loginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSessionCookie(w, r, token)
+	// Not a.audit(r, ...): this request is what *establishes* the session
+	// -- there's no username in context yet for a.audit to read (that's
+	// only ever set by requireAuth on a *later* request), so the
+	// just-authenticated username is passed straight to RecordAudit.
+	if err := a.store.RecordAudit(username, "auth.login", username, "local"); err != nil {
+		log.Println("audit:", err)
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 func (a *app) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	if cookie, err := r.Cookie(sessionCookieName); err == nil {
+		// Looked up before deleting the session, same reason login can't
+		// use a.audit -- /logout isn't behind requireAuth either, so
+		// there's no username in context; the session row itself is the
+		// only place to still get it from once the cookie is cleared.
+		if username, ok, err := a.store.GetSessionUsername(cookie.Value); err == nil && ok {
+			if err := a.store.RecordAudit(username, "auth.logout", username, ""); err != nil {
+				log.Println("audit:", err)
+			}
+		}
 		if err := a.store.DeleteSession(cookie.Value); err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

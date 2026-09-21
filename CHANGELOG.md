@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.10.1] - 2026-09-20
+
+### Added
+- Sign-in and sign-out are now recorded in the audit log (`auth.login`/`auth.logout`, both local and SSO), under a new "Sign-in / sign-out" retention category.
+
 ## [0.10.0] - 2026-09-20
 
 ### Added

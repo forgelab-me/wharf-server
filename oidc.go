@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -322,6 +323,12 @@ func (a *app) oidcCallbackHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	setSessionCookie(w, r, session)
+	// Not a.audit(r, ...) -- same reason as the local login path in
+	// auth.go: this request is what establishes the session, so there's
+	// no username in context yet for a.audit to read.
+	if err := a.store.RecordAudit(user.Username, "auth.login", user.Username, "sso"); err != nil {
+		log.Println("audit:", err)
+	}
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 

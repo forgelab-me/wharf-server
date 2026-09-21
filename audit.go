@@ -25,6 +25,7 @@ type auditCategory struct {
 }
 
 var auditCategories = []auditCategory{
+	{"auth", "Sign-in / sign-out"},
 	{"container", "Containers (restart/stop)"},
 	{"stack", "Stacks (deploy, secrets, lifecycle)"},
 	{"host", "Hosts (approve, rename, address)"},
