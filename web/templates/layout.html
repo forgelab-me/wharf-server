@@ -413,6 +413,13 @@
         }
       });
     });
+    document.querySelectorAll('.remove-container-form').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm('Remove this container permanently? This can\'t be undone.')) {
+          e.preventDefault();
+        }
+      });
+    });
 
     // wharfLiveChart: a tiny rolling line chart with no library, for the
     // container/host Resources panels (cf. server/stats.go). Polls

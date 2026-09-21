@@ -2,6 +2,14 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.11.0] - 2026-09-21
+
+### Added
+- A "Remove" action on `/containers` and a container's own detail page, for a stopped container Wharf didn't deploy (e.g. something left over from Portainer, sharing the same compose-project label convention). Refuses to run on anything still running or on a container that belongs to a stack Wharf actually manages — that one goes through undeploy instead, so its whole stack comes down together rather than one container at a time.
+
+### Fixed
+- The "Stack" column on `/containers` linked to `/stacks/{label}` for any compose-project label it saw, including ones from another tool like Portainer that Wharf never created a stack for — a 404. It now only links when that id is an actual Wharf-managed stack, and shows the label as plain text otherwise.
+
 ## [0.10.1] - 2026-09-20
 
 ### Added

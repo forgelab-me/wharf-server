@@ -19,6 +19,61 @@ func (a *app) stopContainerHandler(w http.ResponseWriter, r *http.Request) {
 	a.runContainerAction(w, r, "stop")
 }
 
+// removeContainerHandler serves POST /containers/{id}/remove -- for a
+// container Wharf didn't deploy (no matching row in the stacks table,
+// e.g. something left over from Portainer), since there's otherwise no
+// clean way to get rid of it from this UI at all: a Wharf-managed
+// service is expected to go through undeploy instead, which tears down
+// its whole stack together rather than one container at a time.
+func (a *app) removeContainerHandler(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	c, err := a.store.GetHostContainerByID(id)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	target := "/containers/" + id
+	if ref := r.Referer(); ref != "" {
+		if u, err := url.Parse(ref); err == nil && u.Path == "/containers" {
+			target = "/containers"
+		}
+	}
+
+	if c.StackID != "" {
+		if _, err := a.store.GetStack(c.StackID); err == nil {
+			redirectWithError(w, r, target, "this container belongs to a stack Wharf manages — undeploy the stack instead of removing one of its containers directly")
+			return
+		}
+	}
+	if c.State == "running" {
+		redirectWithError(w, r, target, "stop the container before removing it")
+		return
+	}
+
+	tc, ok := a.tunnels.get(c.HostID)
+	if !ok {
+		redirectWithError(w, r, target, "agent for this host is not currently connected")
+		return
+	}
+
+	result, err := tc.sendCommand(r.Context(), "remove", c.ContainerID)
+	if err != nil {
+		redirectWithError(w, r, target, err.Error())
+		return
+	}
+	if !result.OK {
+		redirectWithError(w, r, target, result.Output)
+		return
+	}
+
+	// Unlike restart/stop, the container this page was ever about no
+	// longer exists -- always land back on the list rather than a detail
+	// page whose subject is now gone.
+	a.audit(r, "container.remove", c.Name, "host "+c.HostID)
+	redirectWithSavedMessage(w, r, "/containers", "Container removed")
+}
+
 func (a *app) runContainerAction(w http.ResponseWriter, r *http.Request, action string) {
 	id := r.PathValue("id")
 	c, err := a.store.GetHostContainerByID(id)

@@ -27,7 +27,7 @@
           {{if eq .UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
         </td>
         <td>{{.Host}}</td>
-        <td>{{if .Stack}}<a href="/stacks/{{.Stack}}">{{.Stack}}</a>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td>{{if .ManagedStack}}<a href="/stacks/{{.Stack}}">{{.Stack}}</a>{{else if .Stack}}<span class="muted" title="Not tracked by Wharf — deployed by something else">{{.Stack}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
         <td><span class="badge state-{{.State}}">{{.Status}}</span></td>
         <td class="muted">
           {{range $i, $p := .Ports}}{{if $i}}, {{end}}{{if $p.URL}}<a href="{{$p.URL}}" target="_blank" rel="noopener">{{$p.Text}}</a>{{else}}{{$p.Text}}{{end}}{{end}}
@@ -42,6 +42,12 @@
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
             <button type="submit" class="btn btn-ghost btn-sm">Stop</button>
           </form>
+          {{if and (not .ManagedStack) (ne .State "running")}}
+          <form method="post" action="/containers/{{.ID}}/remove" class="inline-form remove-container-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+          </form>
+          {{end}}
         </td>
       </tr>
       {{end}}

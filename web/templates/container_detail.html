@@ -10,6 +10,12 @@
       <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
       <button type="submit" class="btn btn-ghost">Stop</button>
     </form>
+    {{if and (not .Container.ManagedStack) (ne .Container.State "running")}}
+    <form method="post" action="/containers/{{.Container.ID}}/remove" class="remove-container-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost">Remove</button>
+    </form>
+    {{end}}
   </div>
 </section>
 
@@ -27,7 +33,7 @@
       {{range $i, $p := .Container.Ports}}{{if $i}}, {{end}}{{if $p.URL}}<a href="{{$p.URL}}" target="_blank" rel="noopener">{{$p.Text}}</a>{{else}}{{$p.Text}}{{end}}{{end}}
     </td></tr>
     <tr><th>Created</th><td class="muted">{{.Container.Created}}</td></tr>
-    <tr><th>Stack</th><td>{{if .Container.Stack}}<a href="/stacks/{{.Container.Stack}}">{{.Container.Stack}}</a>{{else}}<span class="muted">— not managed by Wharf</span>{{end}}</td></tr>
+    <tr><th>Stack</th><td>{{if .Container.ManagedStack}}<a href="/stacks/{{.Container.Stack}}">{{.Container.Stack}}</a>{{else if .Container.Stack}}<span class="muted">{{.Container.Stack}} — not tracked by Wharf</span>{{else}}<span class="muted">— not managed by Wharf</span>{{end}}</td></tr>
   </table>
 </section>
 

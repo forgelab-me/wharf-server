@@ -23,13 +23,19 @@ import (
 // container id (used in URLs — unlike a name, it's unique across the
 // whole fleet, not just within one host). Stack holds the raw stack id
 // from the compose project label, empty for a container Wharf didn't
-// deploy — the template only links it when non-empty. UpdateStatus is
-// "" (not tracked by any image policy — most containers on a real host,
-// cf. containersHandler), "current", or "outdated" — never guessed,
-// only ever set from the same applied/latest-digest comparison the
-// stack page already uses.
+// deploy at all. ManagedStack is only true when that id also has a row
+// in Wharf's own stacks table -- something like Portainer stamps the
+// exact same compose labels on what it deploys, so Stack alone can't
+// tell "Wharf-managed" from "some other tool's compose project"; the
+// template links to /stacks/{id} only when this is true, to avoid
+// linking to a stack page that 404s. UpdateStatus is "" (not tracked by
+// any image policy — most containers on a real host, cf.
+// containersHandler), "current", or "outdated" — never guessed, only
+// ever set from the same applied/latest-digest comparison the stack
+// page already uses.
 type Container struct {
 	ID, Name, ImageDisplay, Host, State, Status, Created, Stack, UpdateStatus string
+	ManagedStack                                                              bool
 	Ports                                                                     []portLink
 }
 
@@ -46,7 +52,7 @@ func cleanImageName(image string) string {
 	return repo + "@" + shortDigest(digest)
 }
 
-func containerViewFromRow(c store.HostContainer, address string, updateStatus string) Container {
+func containerViewFromRow(c store.HostContainer, address string, updateStatus string, managedStack bool) Container {
 	return Container{
 		ID:           c.ContainerID,
 		Name:         c.Name,
@@ -57,8 +63,27 @@ func containerViewFromRow(c store.HostContainer, address string, updateStatus st
 		Ports:        parsePorts(c.Ports, address),
 		Created:      trimCreatedAt(c.Created),
 		Stack:        c.StackID,
+		ManagedStack: managedStack,
 		UpdateStatus: updateStatus,
 	}
+}
+
+// managedStackSet loads every Wharf-tracked stack id currently in the
+// store, once, so callers rendering a whole page of containers can
+// answer "is this compose label ours?" with a map lookup instead of one
+// query per row. A failure here just means nothing renders as
+// Wharf-managed for this request -- same fail-open-to-plain-text
+// treatment containerUpdateStatuses already gives a failed policy load.
+func managedStackSet(a *app) map[string]bool {
+	stacks, err := a.store.ListStacks()
+	if err != nil {
+		return nil
+	}
+	set := make(map[string]bool, len(stacks))
+	for _, s := range stacks {
+		set[s.ID] = true
+	}
+	return set
 }
 
 // trimCreatedAt drops the "+0000 UTC" tail `docker ps`'s own CreatedAt
@@ -126,11 +151,12 @@ func (a *app) containersHandler(w http.ResponseWriter, r *http.Request) {
 		addresses[h.ID] = h.Address
 	}
 	updateStatuses := containerUpdateStatuses(a)
+	managedStacks := managedStackSet(a)
 
 	containers := make([]Container, 0, len(rows))
 	for _, c := range rows {
 		status := updateStatuses[c.StackID][c.ServiceName]
-		containers = append(containers, containerViewFromRow(c, addresses[c.HostID], status))
+		containers = append(containers, containerViewFromRow(c, addresses[c.HostID], status, managedStacks[c.StackID]))
 	}
 
 	data := map[string]any{
@@ -167,6 +193,7 @@ func (a *app) containerDetailHandler(w http.ResponseWriter, r *http.Request) {
 		address = h.Address
 	}
 	updateStatus := containerUpdateStatuses(a)[c.StackID][c.ServiceName]
+	managedStack := managedStackSet(a)[c.StackID]
 
 	if tc, ok := a.tunnels.get(c.HostID); ok {
 		var wg sync.WaitGroup
@@ -195,7 +222,7 @@ func (a *app) containerDetailHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Title":     c.Name,
 		"Nav":       "containers",
-		"Container": containerViewFromRow(c, address, updateStatus),
+		"Container": containerViewFromRow(c, address, updateStatus, managedStack),
 		"Detail":    detail,
 		"EnvVars":   envVars,
 		"Volumes":   volumes,
@@ -243,7 +270,7 @@ func (a *app) containerLogsPageHandler(w http.ResponseWriter, r *http.Request) {
 	data := map[string]any{
 		"Title":     c.Name + " · Logs",
 		"Nav":       "containers",
-		"Container": containerViewFromRow(c, "", ""),
+		"Container": containerViewFromRow(c, "", "", false),
 		"Logs":      logs,
 		"Lines":     splitLogLines(logs),
 		"Tail":      tail,

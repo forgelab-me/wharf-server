@@ -1962,6 +1962,7 @@ func main() {
 	mux.HandleFunc("GET /containers/{id}/stats", a.containerStatsHandler)
 	mux.HandleFunc("POST /containers/{id}/restart", a.restartContainerHandler)
 	mux.HandleFunc("POST /containers/{id}/stop", a.stopContainerHandler)
+	mux.HandleFunc("POST /containers/{id}/remove", a.removeContainerHandler)
 	mux.HandleFunc("GET /images", a.imagesHandler)
 	mux.HandleFunc("GET /images/{hostID}/{id}", a.imageDetailHandler)
 	mux.HandleFunc("POST /images/delete", requireAdmin(a.deleteImagesHandler))
