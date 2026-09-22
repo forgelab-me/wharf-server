@@ -26,6 +26,7 @@
       <code>{{.Container.ImageDisplay}}</code>
       {{if eq .Container.UpdateStatus "current"}}<span class="badge status-succeeded">up to date</span>{{end}}
       {{if eq .Container.UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
+      {{if .Detail.ImageID}}<br><code class="muted" style="font-size:11px;" title="the image id this container actually runs -- compare against /images for this host">{{.Detail.ImageID}}</code>{{end}}
     </td></tr>
     <tr><th>Host</th><td>{{.Container.Host}}</td></tr>
     <tr><th>Status</th><td><span class="badge state-{{.Container.State}}">{{.Container.Status}}</span></td></tr>

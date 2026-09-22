@@ -18,6 +18,23 @@ type DockerImage struct {
 	Repo, Tag, ID, HostID, Host, Size, UsedBy string
 }
 
+// familiarImageRef strips the "docker.io/library/" (an official image)
+// or bare "docker.io/" (a single-namespace image, e.g. "someuser/repo")
+// prefix Docker's own CLI already drops when displaying a Docker Hub
+// reference. `docker images`'s Repository column always shows that short
+// form, but `docker ps`'s Image column preserves whatever exact string
+// was used to create the container -- which is the fully-qualified form
+// whenever a compose file spells the registry out explicitly (e.g.
+// `image: docker.io/library/traefik:latest`). Comparing the two without
+// this normalization silently breaks "used by": found on a real host
+// where a running traefik container never matched its own image, always
+// showing up as "unused" and un-filterable via "Clean up unused".
+func familiarImageRef(ref string) string {
+	ref = strings.TrimPrefix(ref, "docker.io/library/")
+	ref = strings.TrimPrefix(ref, "docker.io/")
+	return ref
+}
+
 // deleteImagesHandler serves POST /images/delete -- bulk "ids" form
 // values shaped "hostID|imageID" (cf. images.html's checkboxes, and the
 // "Clean up unused images" button that just checks every currently
@@ -92,10 +109,10 @@ func (a *app) imagesHandler(w http.ResponseWriter, r *http.Request) {
 
 	images := make([]DockerImage, 0, len(imageRows))
 	for _, img := range imageRows {
-		ref := img.Repository + ":" + img.Tag
+		ref := familiarImageRef(img.Repository + ":" + img.Tag)
 		var usedBy string
 		for _, c := range containerRows {
-			if c.HostID == img.HostID && c.Image == ref {
+			if c.HostID == img.HostID && familiarImageRef(c.Image) == ref {
 				if usedBy != "" {
 					usedBy += ", "
 				}

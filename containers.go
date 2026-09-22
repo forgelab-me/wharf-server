@@ -336,6 +336,7 @@ func splitLogLines(logs string) []string {
 // command, entrypoint, labels and restart policy are never secrets).
 type containerDetailInfo struct {
 	Image         string
+	ImageID       string // the actual image this container was created from -- cf. dockerInspectRaw.Image
 	Cmd           string
 	Entrypoint    string
 	RestartPolicy string
@@ -358,6 +359,14 @@ type connectedNetwork struct {
 // shape this page actually uses. `docker inspect <id>` always returns a
 // one-element JSON array, never a bare object.
 type dockerInspectRaw struct {
+	// Image is the id of the image this container actually runs, resolved
+	// at create time -- distinct from Config.Image below, which is only
+	// the reference string that was asked for ("traefik:latest") and
+	// never changes just because that tag now points somewhere else in
+	// the registry. Comparing this against /images's own listing for the
+	// same host is how a still-running container turns out to be on an
+	// image nothing else pulled through Wharf (cf. ARCHITECTURE.md).
+	Image  string `json:"Image"`
 	Config struct {
 		Image      string            `json:"Image"`
 		Cmd        []string          `json:"Cmd"`
@@ -399,6 +408,7 @@ func parseInspect(a *app, stackID, raw string) (containerDetailInfo, []EnvVar, [
 
 	detail := containerDetailInfo{
 		Image:         info.Config.Image,
+		ImageID:       shortDigest(info.Image),
 		Cmd:           strings.Join(info.Config.Cmd, " "),
 		Entrypoint:    strings.Join(info.Config.Entrypoint, " "),
 		RestartPolicy: info.HostConfig.RestartPolicy.Name,

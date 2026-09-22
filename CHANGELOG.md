@@ -2,6 +2,14 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.12.0] - 2026-09-21
+
+### Added
+- The container detail page's Overview now shows the actual image id the container was created from (`docker inspect`'s own `.Image`, not the reference string), truncated the same way `/images` already shows an image's own id — a direct way to tell whether a running container is still on the image `/images` lists as current, or on one that's since gone dangling underneath it.
+
+### Fixed
+- `/images`' "Used by" (and the "unused" flag "Clean up unused" relies on) never matched a container against its own image when the compose file referenced it fully-qualified (e.g. `docker.io/library/traefik:latest`) — Docker's own `docker images` always shows the short form for an official/single-namespace image, `docker ps` preserves whichever form created the container, and a naive string comparison between the two never matched. Found on a real host: a running `traefik` container's image always showed "unused".
+
 ## [0.11.0] - 2026-09-21
 
 ### Added
