@@ -1,5 +1,8 @@
 # wharf-server
 
+[![CI](https://github.com/forgelab-me/wharf-server/actions/workflows/server.yml/badge.svg)](https://github.com/forgelab-me/wharf-server/actions/workflows/server.yml)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 The controller: serves the UI and API, holds all persistent state, custodies every private key/secret, and talks to enrolled agents over a pinned-mTLS WebSocket tunnel. Wharf is a self-hosted GitOps deployment controller and agent for Docker standalone and Compose — deliberately not Swarm, not Kubernetes. See [wharf-agent](https://github.com/forgelab-me/wharf-agent) for the other half of the picture.
 
 ## Building and running
