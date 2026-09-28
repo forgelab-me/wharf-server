@@ -2,6 +2,12 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.13.1] - 2026-09-28
+
+### Security
+- Bumped `golang.org/x/crypto` (v0.55.0 → v0.57.0), fixing two SSH denial-of-service issues (CVE-2026-78662, CVE-2026-56855) in the library used for Git deploy keys.
+- Bumped `github.com/go-jose/go-jose/v4` (v4.1.4 → v4.1.5), used by the OIDC/SSO login path, fixing several hardening issues (panics on malformed input, a JSON parsing DoS, JWT validation bypass edge cases).
+
 ## [0.13.0] - 2026-09-28
 
 ### Added
