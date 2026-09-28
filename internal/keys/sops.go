@@ -1,24 +1,12 @@
-// SOPS decryption (age backend only) — a second ciphertext format
-// Decrypt understands, alongside Wharf's own plain-age whole-file
-// format. Added because a real user's existing secrets.enc.yaml files
-// are already SOPS output (age as SOPS' KMS backend) from an established
-// workflow used elsewhere in their infrastructure, not something they
-// were willing to give up just for Wharf.
+// SOPS support (age backend only) -- a second ciphertext format Decrypt
+// understands, alongside Wharf's own plain-age whole-file format.
 //
-// Scope, stated plainly rather than silently narrowed: only a flat
-// top-level map of scalar values is supported — a Wharf secrets file
-// has no reason to nest (env vars aren't nested), so this doesn't try
-// to replicate SOPS' full tree-walk path/AAD convention for maps and
-// lists at arbitrary depth. Only the age KMS backend is accepted — any
-// other backend (AWS/GCP/Azure KMS, PGP, HashiCorp Vault) is a clear
-// error, not a silent skip. SOPS' own MAC (sops.mac, a second layer of
-// tamper-detection over the whole document) is deliberately not
-// verified: every value's own AES-GCM tag already authenticates that
-// exact value independently — a tampered or truncated ENC[...] fails
-// closed on its own, which covers the realistic threat model here (the
-// same admin who deploys the stack controls this file). Replicating
-// SOPS' exact MAC string-concatenation algorithm on top of that buys
-// little for meaningfully more surface to get subtly wrong.
+// Only a flat top-level map of scalar values is supported (a Wharf
+// secrets file never nests) and only the age KMS backend is accepted;
+// any other backend is a clear error. SOPS' own document-wide MAC is
+// not verified on decrypt -- each value's AES-GCM tag already
+// authenticates that value independently, which is enough given who can
+// touch this file (the same admin who deploys the stack).
 package keys
 
 import (
@@ -28,6 +16,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"io"
+	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
@@ -38,11 +28,8 @@ import (
 )
 
 // looksLikeSOPS distinguishes a SOPS-encrypted YAML document from
-// Wharf's own plain-age whole-file ciphertext via a real YAML parse
-// (not a string search) for the one shape that matters: a top-level
-// "sops.age" list. Raw age ciphertext is binary and essentially never
-// round-trips through a YAML parser into exactly this shape, so this
-// has no meaningful false-positive risk in practice.
+// Wharf's own plain-age whole-file ciphertext by checking for a
+// top-level "sops.age" list.
 func looksLikeSOPS(ciphertext []byte) bool {
 	var probe struct {
 		Sops struct {
@@ -57,16 +44,27 @@ func looksLikeSOPS(ciphertext []byte) bool {
 	return len(probe.Sops.Age) > 0
 }
 
+// looksArmored reports whether ciphertext is age's ASCII-armored form
+// (age -a's output) rather than the raw binary form.
+func looksArmored(ciphertext []byte) bool {
+	return bytes.HasPrefix(ciphertext, []byte(armor.Header))
+}
+
+// unwrapArmor strips age's ASCII armor if present, otherwise passes
+// ciphertext through unchanged.
+func unwrapArmor(ciphertext []byte) io.Reader {
+	if looksArmored(ciphertext) {
+		return armor.NewReader(bytes.NewReader(ciphertext))
+	}
+	return bytes.NewReader(ciphertext)
+}
+
 // sopsEncPattern matches a SOPS-encrypted scalar value:
 // ENC[AES256_GCM,data:<base64>,iv:<base64>,tag:<base64>,type:<word>]
 var sopsEncPattern = regexp.MustCompile(`^ENC\[AES256_GCM,data:(.*),iv:(.*),tag:(.*),type:(\w+)\]$`)
 
 // decryptSOPS decrypts a SOPS document into the same "KEY=value\n"
-// lines format Wharf's own plain-age whole-file secrets already
-// produce, so every downstream caller (parseEnvLines, on both the
-// controller's local-stack path and the agent's Git-stack path) needs
-// no changes at all — the format dispatch lives entirely inside
-// Decrypt, below.
+// lines format Wharf's own plain-age whole-file secrets produce.
 func decryptSOPS(ciphertext []byte, identity *age.X25519Identity) ([]byte, error) {
 	var doc map[string]any
 	if err := yaml.Unmarshal(ciphertext, &doc); err != nil {
@@ -106,12 +104,8 @@ func decryptSOPS(ciphertext []byte, identity *age.X25519Identity) ([]byte, error
 }
 
 // sopsDataKey decrypts SOPS' own randomly-generated data key from
-// whichever age recipient stanza (sops.age[].enc, itself an ordinary
-// ASCII-armored age file) our identity can open — the same age package
-// Wharf already uses for its whole-file format, just applied to this
-// nested blob instead of the outer document. A stanza meant for a
-// different recipient simply fails to open; every stanza is tried
-// before giving up, matching sops' own multi-recipient tolerance.
+// whichever age recipient stanza (sops.age[].enc) our identity can
+// open, trying each one in turn.
 func sopsDataKey(sopsMeta map[string]any, identity *age.X25519Identity) ([]byte, error) {
 	ageStanzas, ok := sopsMeta["age"].([]any)
 	if !ok || len(ageStanzas) == 0 {
@@ -127,10 +121,7 @@ func sopsDataKey(sopsMeta map[string]any, identity *age.X25519Identity) ([]byte,
 		if enc == "" {
 			continue
 		}
-		// sops.age[].enc is ASCII-armored (-----BEGIN AGE ENCRYPTED
-		// FILE-----...), unlike Wharf's own whole-file format which age
-		// itself always writes unarmored -- unwrap it before handing the
-		// raw age.Decrypt stream reader its expected binary framing.
+		// sops.age[].enc is ASCII-armored; unwrap before age.Decrypt.
 		r, err := age.Decrypt(armor.NewReader(strings.NewReader(enc)), identity)
 		if err != nil {
 			lastErr = err
@@ -175,11 +166,7 @@ func sopsDecryptValue(enc string, dataKey []byte, additionalData string) (string
 	if err != nil {
 		return "", fmt.Errorf("init aes cipher: %w", err)
 	}
-	// SOPS uses a 32-byte GCM nonce, not the standard 12-byte one Go's
-	// cipher.NewGCM assumes -- confirmed against real sops CLI output
-	// (its own "iv" field is consistently 32 bytes), not guessed from
-	// the spec alone. NewGCMWithNonceSize accepts whatever length the
-	// ciphertext actually used.
+	// SOPS uses a 32-byte GCM nonce, not Go's standard 12-byte one.
 	aead, err := cipher.NewGCMWithNonceSize(block, len(iv))
 	if err != nil {
 		return "", fmt.Errorf("init gcm: %w", err)
@@ -189,4 +176,64 @@ func sopsDecryptValue(enc string, dataKey []byte, additionalData string) (string
 		return "", fmt.Errorf("gcm open (wrong key or tampered value): %w", err)
 	}
 	return string(plaintext), nil
+}
+
+// ValidPublicKey reports whether s parses as a real age X25519 public key.
+func ValidPublicKey(s string) bool {
+	_, err := age.ParseX25519Recipient(s)
+	return err == nil
+}
+
+// EncryptToRecipient encrypts plaintext to an arbitrary age public key --
+// unlike Encrypt, which only ever encrypts to a stack this custodian
+// already holds the key for, this takes any recipient with no lookup.
+// The output is armored (age -a's ASCII form) rather than raw binary,
+// since it's meant to be displayed and copied/downloaded as text.
+func EncryptToRecipient(plaintext []byte, publicKey string) ([]byte, error) {
+	recipient, err := age.ParseX25519Recipient(publicKey)
+	if err != nil {
+		return nil, fmt.Errorf("parse public key: %w", err)
+	}
+	var buf bytes.Buffer
+	armorWriter := armor.NewWriter(&buf)
+	wc, err := age.Encrypt(armorWriter, recipient)
+	if err != nil {
+		return nil, fmt.Errorf("start encryption: %w", err)
+	}
+	if _, err := wc.Write(plaintext); err != nil {
+		return nil, fmt.Errorf("write plaintext: %w", err)
+	}
+	if err := wc.Close(); err != nil {
+		return nil, fmt.Errorf("finalize encryption: %w", err)
+	}
+	if err := armorWriter.Close(); err != nil {
+		return nil, fmt.Errorf("finalize armor: %w", err)
+	}
+	return buf.Bytes(), nil
+}
+
+// EncryptSOPS shells out to the real `sops` CLI (bundled in the image,
+// cf. Dockerfile) rather than re-implementing SOPS' write-side document
+// format, so the result has a real MAC and is genuinely SOPS-compatible.
+// Encryption only needs the recipient's public key, so no private key
+// is ever exposed to the subprocess. --input-type/--output-type are
+// required since plaintext arrives on stdin with no filename to infer a
+// format from.
+//
+// publicKey is validated as a real age recipient before it becomes part
+// of this subprocess's argv -- exec.Command never goes through a shell,
+// so this isn't about shell injection, it just keeps a malformed value
+// (e.g. one shaped like another sops flag) from reaching the subprocess
+// at all.
+func EncryptSOPS(plaintext []byte, publicKey string) ([]byte, error) {
+	if !ValidPublicKey(publicKey) {
+		return nil, fmt.Errorf("not a valid age public key")
+	}
+	cmd := exec.Command("sops", "--encrypt", "--input-type", "yaml", "--output-type", "yaml", "--age", publicKey, "/dev/stdin")
+	cmd.Stdin = bytes.NewReader(plaintext)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("sops encrypt: %w: %s", err, strings.TrimSpace(string(out)))
+	}
+	return out, nil
 }

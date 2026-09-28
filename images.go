@@ -19,16 +19,12 @@ type DockerImage struct {
 }
 
 // familiarImageRef strips the "docker.io/library/" (an official image)
-// or bare "docker.io/" (a single-namespace image, e.g. "someuser/repo")
-// prefix Docker's own CLI already drops when displaying a Docker Hub
-// reference. `docker images`'s Repository column always shows that short
-// form, but `docker ps`'s Image column preserves whatever exact string
-// was used to create the container -- which is the fully-qualified form
-// whenever a compose file spells the registry out explicitly (e.g.
-// `image: docker.io/library/traefik:latest`). Comparing the two without
-// this normalization silently breaks "used by": found on a real host
-// where a running traefik container never matched its own image, always
-// showing up as "unused" and un-filterable via "Clean up unused".
+// or bare "docker.io/" (a single-namespace image) prefix Docker's own
+// CLI already drops when displaying a Docker Hub reference. `docker
+// images`'s Repository column always shows that short form, but `docker
+// ps`'s Image column preserves the fully-qualified form when a compose
+// file spells the registry out explicitly -- comparing the two without
+// this normalization breaks "used by" matching.
 func familiarImageRef(ref string) string {
 	ref = strings.TrimPrefix(ref, "docker.io/library/")
 	ref = strings.TrimPrefix(ref, "docker.io/")

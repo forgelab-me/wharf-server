@@ -2,6 +2,14 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.13.0] - 2026-09-28
+
+### Added
+- A manual secrets-encrypt helper (`/tools/secrets`, admin only) for a Git stack's `secrets.enc.yaml`: paste or upload a flat `KEY: value` document, pick a public key (an existing stack's, via a dropdown, or pasted directly), and get back ciphertext to copy or download — plain age (armored, safe to copy/display as text) or real SOPS (age backend), without installing either CLI locally. SOPS output is produced by the real `sops` binary, now bundled in the image, rather than a hand-rolled encoder, so it's byte-for-byte what `sops` itself would write (real MAC included) — encryption only ever needs the recipient's public key, so this never involves a private key, and that key is validated as a real `age1...` recipient before it's ever used. Nothing typed or uploaded here is ever stored; it's a stateless utility, not a second way to manage a stack's own secrets. A stack's own page links straight into it with that stack's public key already filled in (`?stack=<id>`), instead of a copy-paste round trip.
+
+### Fixed
+- Every `<input type=file>` in the app (backup restore, the volume browser upload, and this new page) rendered the browser's own light-themed default control regardless of the rest of the page's theme. Restyled globally to match every other field.
+
 ## [0.12.0] - 2026-09-21
 
 ### Added

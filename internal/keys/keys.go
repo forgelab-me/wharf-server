@@ -207,7 +207,9 @@ func (c *Custodian) Decrypt(stackID string, ciphertext []byte) ([]byte, error) {
 		return decryptSOPS(ciphertext, id)
 	}
 
-	r, err := age.Decrypt(bytes.NewReader(ciphertext), id)
+	// Unwraps age's ASCII armor first if present -- age.Decrypt itself
+	// only understands the raw binary form.
+	r, err := age.Decrypt(unwrapArmor(ciphertext), id)
 	if err != nil {
 		if looksCRLFMangled(ciphertext) {
 			// A real age file's header is pure ASCII with bare LF line

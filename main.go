@@ -438,6 +438,8 @@ func main() {
 	mux.HandleFunc("POST /users/{username}/delete", requireAdmin(a.deleteUserHandler))
 	mux.HandleFunc("GET /audit-log", requireAdmin(a.auditLogHandler))
 	mux.HandleFunc("POST /audit-log/retention", requireAdmin(a.setAuditRetentionHandler))
+	mux.HandleFunc("GET /tools/secrets", requireAdmin(a.secretsToolFormHandler))
+	mux.HandleFunc("POST /tools/secrets/encrypt", requireAdmin(a.encryptSecretsToolHandler))
 
 	// Canal agent, séparé de l'UI : enrôlement + commandes de déploiement.
 	// HTTPS uniquement — l'épinglage par empreinte n'a de sens qu'avec TLS.

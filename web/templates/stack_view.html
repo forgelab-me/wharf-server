@@ -289,7 +289,7 @@
 
 <section class="panel">
   <h2>Public key (age)</h2>
-  <p class="muted">Use it to encrypt <code>secrets.enc.yaml</code> locally if this stack lives on Git — either <strong>plain age</strong> (<code>age -r &lt;this key&gt; -o secrets.enc.yaml secrets.yaml</code>) or <strong>SOPS</strong> with age as its backend (<code>sops -e --age &lt;this key&gt; secrets.yaml &gt; secrets.enc.yaml</code>); Wharf detects which one it is. The private key never leaves the controller.</p>
+  <p class="muted">Use it to encrypt <code>secrets.enc.yaml</code> locally if this stack lives on Git — either <strong>plain age</strong> (<code>age -r &lt;this key&gt; -o secrets.enc.yaml secrets.yaml</code>) or <strong>SOPS</strong> with age as its backend (<code>sops -e --age &lt;this key&gt; secrets.yaml &gt; secrets.enc.yaml</code>); Wharf detects which one it is. The private key never leaves the controller. No <code>age</code>/<code>sops</code> installed locally? <a href="/tools/secrets?stack={{.Stack.ID}}">Encrypt it here instead</a>.</p>
   <div class="code-box">
     <pre id="pubkey">{{.Stack.PublicKey}}</pre>
     <button class="btn btn-ghost copy-btn" data-copy-target="pubkey">Copy</button>

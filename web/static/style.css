@@ -424,6 +424,11 @@ option { background-color: var(--bg-elevated); color: var(--text); }
 }
 
 .code-box .copy-btn { position: absolute; top: 12px; right: 12px; padding: 5px 12px; font-size: 12px; }
+.code-box .download-btn { position: absolute; top: 12px; right: 80px; padding: 5px 12px; font-size: 12px; }
+/* Two buttons instead of one need more reserved space than the shared
+   80px above -- otherwise wrapped ciphertext runs under the Download
+   button's left edge, cf. secrets_tool.html's own result box. */
+#secrets-tool-result { padding-right: 160px; }
 
 .form { max-width: 620px; }
 .form-row { margin-bottom: 16px; }
@@ -441,6 +446,31 @@ option { background-color: var(--bg-elevated); color: var(--text); }
    room for the chevron (cf. the global "select" rule) that a shared
    "padding: 9px 12px" would clobber. */
 .form-row select { width: 100%; }
+
+/* ::file-selector-button restyles a file input's button half to match
+   the rest of the form; the input itself gets the same dark field
+   styling as a text input. */
+.form-row input[type=file] {
+  width: 100%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.form-row input[type=file]::file-selector-button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-right: 10px;
+}
+.form-row input[type=file]::file-selector-button:hover { border-color: var(--accent); }
 
 /* A plain kv-table's fixed-width label column plus a narrow number
    input left most of the panel's width empty -- a responsive grid of

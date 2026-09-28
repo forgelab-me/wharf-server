@@ -24,15 +24,10 @@ import (
 // whole fleet, not just within one host). Stack holds the raw stack id
 // from the compose project label, empty for a container Wharf didn't
 // deploy at all. ManagedStack is only true when that id also has a row
-// in Wharf's own stacks table -- something like Portainer stamps the
-// exact same compose labels on what it deploys, so Stack alone can't
-// tell "Wharf-managed" from "some other tool's compose project"; the
-// template links to /stacks/{id} only when this is true, to avoid
-// linking to a stack page that 404s. UpdateStatus is "" (not tracked by
-// any image policy — most containers on a real host, cf.
-// containersHandler), "current", or "outdated" — never guessed, only
-// ever set from the same applied/latest-digest comparison the stack
-// page already uses.
+// in Wharf's own stacks table (another tool can stamp the same compose
+// labels); the template only links to /stacks/{id} when this is true.
+// UpdateStatus is "" (not tracked by any image policy), "current", or
+// "outdated".
 type Container struct {
 	ID, Name, ImageDisplay, Host, State, Status, Created, Stack, UpdateStatus string
 	ManagedStack                                                              bool
@@ -68,12 +63,9 @@ func containerViewFromRow(c store.HostContainer, address string, updateStatus st
 	}
 }
 
-// managedStackSet loads every Wharf-tracked stack id currently in the
-// store, once, so callers rendering a whole page of containers can
-// answer "is this compose label ours?" with a map lookup instead of one
-// query per row. A failure here just means nothing renders as
-// Wharf-managed for this request -- same fail-open-to-plain-text
-// treatment containerUpdateStatuses already gives a failed policy load.
+// managedStackSet loads every Wharf-tracked stack id, once, so a page
+// of containers can check "is this compose label ours?" with a map
+// lookup instead of one query per row.
 func managedStackSet(a *app) map[string]bool {
 	stacks, err := a.store.ListStacks()
 	if err != nil {
@@ -336,7 +328,7 @@ func splitLogLines(logs string) []string {
 // command, entrypoint, labels and restart policy are never secrets).
 type containerDetailInfo struct {
 	Image         string
-	ImageID       string // the actual image this container was created from -- cf. dockerInspectRaw.Image
+	ImageID       string // the actual image this container was created from
 	Cmd           string
 	Entrypoint    string
 	RestartPolicy string
@@ -359,13 +351,10 @@ type connectedNetwork struct {
 // shape this page actually uses. `docker inspect <id>` always returns a
 // one-element JSON array, never a bare object.
 type dockerInspectRaw struct {
-	// Image is the id of the image this container actually runs, resolved
-	// at create time -- distinct from Config.Image below, which is only
-	// the reference string that was asked for ("traefik:latest") and
-	// never changes just because that tag now points somewhere else in
-	// the registry. Comparing this against /images's own listing for the
-	// same host is how a still-running container turns out to be on an
-	// image nothing else pulled through Wharf (cf. ARCHITECTURE.md).
+	// Image is the id of the image this container actually runs --
+	// distinct from Config.Image below, which is just the reference
+	// string asked for ("traefik:latest") and never changes even if
+	// that tag now points elsewhere in the registry.
 	Image  string `json:"Image"`
 	Config struct {
 		Image      string            `json:"Image"`

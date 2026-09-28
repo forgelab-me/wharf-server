@@ -15,7 +15,11 @@ FROM alpine:3.24.1
 # git + openssh-client-default: the controller runs `git ls-remote`
 # itself for polling-mode stacks (cheap, read-only, no reason to route
 # through an agent - cf. ARCHITECTURE.md, "Déclenchement du déploiement").
-RUN apk add --no-cache ca-certificates git openssh-client-default
+# sops: the real CLI, shelled out to for the manual secrets-encrypt
+# helper's SOPS output mode (cf. internal/keys/sops.go's EncryptSOPS) --
+# only ever invoked with a public key, never a private one, so this adds
+# no exposure of anything this controller custodies.
+RUN apk add --no-cache ca-certificates git openssh-client-default sops
 COPY --from=build /out/wharf-server /usr/local/bin/wharf-server
 # Static baseline for a plain local `docker build` -- CI's own --label
 # flags (docker/metadata-action, cf. .github/workflows/server.yml) take
