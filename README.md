@@ -7,6 +7,15 @@ The controller: serves the UI and API, holds all persistent state, custodies eve
 
 **[Documentation](https://wharf.forgelab.me/)**
 
+## Screenshots
+
+| | |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![A stack](docs/screenshots/stack-view.png) |
+| ![Containers](docs/screenshots/containers.png) | ![A host](docs/screenshots/host-detail.png) |
+
+More in the [screenshot gallery](docs/screenshots.md) (sample data).
+
 ## Building and running
 
 Pull the published image, or build the same thing locally — no local Go toolchain needed either way:

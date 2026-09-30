@@ -38,7 +38,7 @@
       <tr>
         <td><a href="/hosts/{{.ID}}">{{.Name}}</a></td>
         <td><span class="badge status-connected">{{.Status}}</span></td>
-        <td class="muted"><code>{{.CertFingerprint}}</code></td>
+        <td class="muted fp-cell"><code>{{.CertFingerprint}}</code></td>
         <td class="muted">{{.LastSeenAt}}</td>
         <td class="muted">
           {{if .AgentVersion}}{{.AgentVersion}}{{else}}—{{end}}

@@ -550,3 +550,6 @@ fieldset legend { font-size: 13px; color: var(--text-muted); margin-bottom: 6px;
   margin: 16px 0;
   position: relative;
 }
+
+/* A full-length certificate fingerprint has no natural break point; let it wrap inside its cell. */
+.fp-cell code { white-space: normal; overflow-wrap: anywhere; }
