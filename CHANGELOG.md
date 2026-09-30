@@ -4,6 +4,9 @@ All notable changes to `wharf-server` are documented here. Format loosely follow
 
 ## [0.15.2] - 2026-09-30
 
+### Security
+- The image is built on Alpine 3.24.2 instead of 3.24.1, which brings OpenSSL 3.5.8 (CVE-2026-14456 in `libcrypto3` and `libssl3`).
+
 ### Fixed
 - With several hosts connected, a host's state (containers, images, volumes, networks) could fail to be stored with `database is locked`, and stayed stale until its next push. Each agent resent its whole state every 45 seconds and on every Docker event, and every push rewrote every table even when nothing had changed, so the hosts queued for SQLite's single writer for nothing. Now only a table that actually changed is written, and a write that finds the database busy is retried a few times before giving up.
 

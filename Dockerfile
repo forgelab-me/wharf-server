@@ -11,7 +11,7 @@ COPY . .
 ARG VERSION=dev
 RUN CGO_ENABLED=0 go build -ldflags "-X main.version=${VERSION}" -o /out/wharf-server .
 
-FROM alpine:3.24.1
+FROM alpine:3.24.2
 # git + openssh-client-default: the controller runs `git ls-remote`
 # itself for polling-mode stacks (cheap, read-only, no reason to route
 # through an agent - cf. ARCHITECTURE.md, "Déclenchement du déploiement").
