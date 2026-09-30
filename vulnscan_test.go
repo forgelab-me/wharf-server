@@ -356,14 +356,14 @@ func TestOnlyOneBackgroundTaskAtATime(t *testing.T) {
 		t.Fatalf("status = %+v", st)
 	}
 	close(release)
-	for i := 0; i < 100 && f.a.vuln.snapshot().Busy; i++ {
+	for i := 0; i < 500 && f.a.vuln.snapshot().Busy; i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if f.a.vuln.snapshot().Busy {
 		t.Fatal("the task never finished")
 	}
 	f.a.vuln.start("failing", func(context.Context) error { return errors.New("boom") })
-	for i := 0; i < 100 && f.a.vuln.snapshot().Busy; i++ {
+	for i := 0; i < 500 && f.a.vuln.snapshot().Busy; i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if st := f.a.vuln.snapshot(); st.Err != "boom" {
@@ -477,7 +477,7 @@ func TestSaveVulnHandler(t *testing.T) {
 	if strings.Contains(loc, "error=") {
 		t.Fatalf("enable: %s", loc)
 	}
-	for i := 0; i < 200 && f.a.vuln.snapshot().Busy; i++ {
+	for i := 0; i < 500 && f.a.vuln.snapshot().Busy; i++ {
 		time.Sleep(10 * time.Millisecond)
 	}
 	if st, _ := f.a.store.GetVulnSettings(); !st.Enabled || st.Scanner != "trivy" {
@@ -594,24 +594,39 @@ func TestVulnActionHandlers(t *testing.T) {
 	}
 
 	f.a.store.SetVulnSettingsChoice(true, "trivy")
-	for action, want := range map[string]string{"scan": "scan.run", "update-db": "scan.update_db"} {
-		loc := post(f.a.vulnActionHandler(action), nil).Header().Get("Location")
-		if strings.Contains(loc, "error=") {
-			t.Fatalf("%s: %s", action, loc)
-		}
-		for i := 0; i < 200 && f.a.vuln.snapshot().Busy; i++ {
+	wait := func() {
+		for i := 0; i < 500 && f.a.vuln.snapshot().Busy; i++ {
 			time.Sleep(10 * time.Millisecond)
 		}
-		entries, _ := f.a.store.ListAudit(20)
-		found := false
-		for _, e := range entries {
-			found = found || e.Action == want
-		}
-		if !found {
-			t.Errorf("%s: no %q audit entry in %+v", action, want, entries)
+		if f.a.vuln.snapshot().Busy {
+			t.Fatal("the background task never finished")
 		}
 	}
-	if f.fake.updates < 2 {
-		t.Errorf("the database update action must refresh the database, updates = %d", f.fake.updates)
+	audited := func(want string) bool {
+		entries, _ := f.a.store.ListAudit(20)
+		for _, e := range entries {
+			if e.Action == want {
+				return true
+			}
+		}
+		return false
+	}
+
+	// "Scan now": the missing database is fetched once, the scan itself does not refresh it.
+	if loc := post(f.a.vulnActionHandler("scan"), nil).Header().Get("Location"); strings.Contains(loc, "error=") {
+		t.Fatalf("scan: %s", loc)
+	}
+	wait()
+	if !audited("scan.run") || f.fake.updates != 1 {
+		t.Fatalf("scan: audited=%v updates=%d, want the action audited and one initial database download", audited("scan.run"), f.fake.updates)
+	}
+
+	// "Update database": refreshes it even though one is present.
+	if loc := post(f.a.vulnActionHandler("update-db"), nil).Header().Get("Location"); strings.Contains(loc, "error=") {
+		t.Fatalf("update-db: %s", loc)
+	}
+	wait()
+	if !audited("scan.update_db") || f.fake.updates != 2 {
+		t.Fatalf("update-db: audited=%v updates=%d, want the action audited and the database refreshed", audited("scan.update_db"), f.fake.updates)
 	}
 }

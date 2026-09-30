@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.15.1] - 2026-09-30
+
+### Changed
+- Same code as 0.15.0, whose image was never published: its CI run failed on a test that depended on the order of a map. The test is fixed.
+
 ## [0.15.0] - 2026-09-30
 
 ### Added
