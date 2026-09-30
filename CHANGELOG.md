@@ -2,6 +2,13 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.14.0] - 2026-09-29
+
+### Added
+- An optional `secrets.refs.yaml` for Git stacks, listing exactly which variables a stack gets and where each value comes from (`KEY: ref+<scheme>://<path>#/<field>`). When present it is the only source, so keys of `secrets.enc.yaml` that no reference picks up are not deployed (the deployment output names them, never their values). Literal values and query strings are refused, and a single unresolvable reference fails the deploy, listing every failing key. Stacks without the file behave exactly as before. Two schemes: `ref+sops://secrets.enc.yaml#/KEY` reads the stack's own encrypted file (and allows renaming a key), `ref+vault://<mount>/<path>#/<field>` reads from OpenBao or HashiCorp Vault.
+- Secret providers (Settings, admin only): shared connections to an OpenBao / Vault server (KV v1 or v2, token or AppRole login, optional namespace and private CA), with a **Test** button. A connection holds the address and optional default credentials; credentials are write-only and kept in the controller's isolated key store. A Git stack's page gets a **Secret references** panel to attach one, as is, with credentials of the stack's own (the address stays inherited), or as a connection of its own, plus the **allowed paths** it may read (required, compared by whole path segments: a reference outside them fails the deploy without reaching the server). A connection still used by a stack cannot be deleted. The reference never carries an address or credentials, redirects are not followed, and an AppRole login is cached per identity so two stacks never share a token.
+- Resolution is recorded in the audit log (`secrets.resolve` / `secrets.resolve_failed`, variable names and connection only, never a value). A stack with a secret connection is refused, with a clear message, on an agent older than 0.5.0 instead of deploying with empty variables; the agent side is in the agent's changelog.
+
 ## [0.13.1] - 2026-09-28
 
 ### Security

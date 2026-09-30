@@ -224,6 +224,13 @@ func (a *app) commandsHandler(w http.ResponseWriter, r *http.Request) {
 		// revoked deploy key/connection never blocks an undeploy. cf. the
 		// plan for this chunk.
 		if dep.Action != "down" {
+			if bindings, _ := a.store.ListSecretBindings(st.ID); len(bindings) > 0 && agentTooOldForSecretRefs(host.AgentVersion) {
+				msg := agentTooOldMessage(host.AgentVersion)
+				_ = a.store.CompleteDeployment(dep.ID, "failed", msg)
+				a.notifyDeploymentFailed(st.Name, msg)
+				http.Error(w, msg, http.StatusConflict)
+				return
+			}
 			authKind, sshPriv, httpUser, httpPass, err := a.resolveGitAuth(st)
 			if err != nil {
 				_ = a.store.CompleteDeployment(dep.ID, "failed", "could not load git credential: "+err.Error())

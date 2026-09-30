@@ -25,6 +25,7 @@ import (
 
 	"github.com/forgelab-me/wharf-server/internal/identity"
 	"github.com/forgelab-me/wharf-server/internal/keys"
+	"github.com/forgelab-me/wharf-server/internal/secrets"
 	"github.com/forgelab-me/wharf-server/internal/store"
 	"github.com/robfig/cron/v3"
 )
@@ -47,10 +48,11 @@ type app struct {
 	keys        *keys.Custodian
 	fingerprint string // empreinte de l'identité auto-signée du contrôleur
 	cron        *cron.Cron
-	tunnels     *tunnelRegistry // connexions agent live, cf. tunnel.go
-	polls       *pollRegistry   // cron.EntryID par stack en polling, cf. poller.go
-	dataDir     string          // cf. backup.go -- where wharf.db/keys.db/identity actually live
-	notifyState *notifyState    // cf. notifications.go -- "already notified" tracking, level-triggered events
+	tunnels     *tunnelRegistry   // connexions agent live, cf. tunnel.go
+	polls       *pollRegistry     // cron.EntryID par stack en polling, cf. poller.go
+	dataDir     string            // cf. backup.go -- where wharf.db/keys.db/identity actually live
+	notifyState *notifyState      // cf. notifications.go -- "already notified" tracking, level-triggered events
+	resolver    *secrets.Resolver // cf. agent_resolve.go -- secrets.refs.yaml providers
 }
 
 type Stat struct {
@@ -307,7 +309,7 @@ func main() {
 	fingerprint := identity.Fingerprint(cert.Certificate[0])
 	log.Println("controller identity:", fingerprint)
 
-	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState()}
+	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider())}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
 	// time (cronParser in poller.go) — registration must never accept a
@@ -438,6 +440,17 @@ func main() {
 	mux.HandleFunc("POST /users/{username}/delete", requireAdmin(a.deleteUserHandler))
 	mux.HandleFunc("GET /audit-log", requireAdmin(a.auditLogHandler))
 	mux.HandleFunc("POST /audit-log/retention", requireAdmin(a.setAuditRetentionHandler))
+	mux.HandleFunc("GET /settings/secret-providers", requireAdmin(a.secretProvidersHandler))
+	mux.HandleFunc("GET /settings/secret-providers/new", requireAdmin(a.newSecretProviderFormHandler))
+	mux.HandleFunc("POST /settings/secret-providers", requireAdmin(a.createSecretProviderHandler))
+	mux.HandleFunc("GET /settings/secret-providers/{id}", requireAdmin(a.editSecretProviderFormHandler))
+	mux.HandleFunc("POST /settings/secret-providers/{id}", requireAdmin(a.updateSecretProviderHandler))
+	mux.HandleFunc("POST /settings/secret-providers/{id}/delete", requireAdmin(a.deleteSecretProviderHandler))
+	mux.HandleFunc("POST /settings/secret-providers/{id}/test", requireAdmin(a.testSecretProviderHandler))
+	mux.HandleFunc("GET /stacks/{id}/secrets/bindings/{type}", requireAdmin(a.stackBindingFormHandler))
+	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}", requireAdmin(a.saveStackBindingHandler))
+	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}/delete", requireAdmin(a.deleteStackBindingHandler))
+	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}/test", requireAdmin(a.testStackBindingHandler))
 	mux.HandleFunc("GET /tools/secrets", requireAdmin(a.secretsToolFormHandler))
 	mux.HandleFunc("POST /tools/secrets/encrypt", requireAdmin(a.encryptSecretsToolHandler))
 
@@ -449,6 +462,7 @@ func main() {
 	agentMux.HandleFunc("GET /agent/commands", a.commandsHandler)
 	agentMux.HandleFunc("POST /agent/deployments/{id}/result", a.deploymentResultHandler)
 	agentMux.HandleFunc("POST /agent/decrypt", a.decryptHandler)
+	agentMux.HandleFunc("POST /agent/resolve", a.resolveHandler)
 	agentMux.HandleFunc("GET /agent/tunnel", a.tunnelHandler)
 
 	// RequestClientCert (not Require/RequireAndVerify): there is no CA to

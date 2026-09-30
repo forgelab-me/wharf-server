@@ -378,6 +378,9 @@ func (a *app) stackViewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	if st.SourceType == "git" {
+		data["SecretBindings"], data["UnboundConnectors"] = a.stackSecretsView(id)
+	}
 	if st.SourceType == "local" {
 		if revs, err := a.store.ListStackRevisions(id); err == nil {
 			data["Revisions"] = revs
@@ -720,6 +723,16 @@ func (a *app) deleteStackHandler(w http.ResponseWriter, r *http.Request) {
 	if err := a.keys.DeleteStackKeys(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	// The stack's private connections go with it (DeleteStack removes their
+	// rows); their credentials live in the custodian.
+	if local, err := a.store.SecretConnectionsForStack(id); err == nil {
+		for _, c := range local {
+			if err := a.keys.DeleteSecretCredentials(c.ID); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 	}
 	if err := a.store.DeleteStack(id); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

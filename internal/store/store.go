@@ -237,6 +237,23 @@ func Open(path string) (*Store, error) {
 	CREATE TABLE IF NOT EXISTS audit_retention (
 		category    TEXT PRIMARY KEY,
 		retain_days INTEGER NOT NULL DEFAULT 0
+	);
+	CREATE TABLE IF NOT EXISTS secret_connections (
+		id         TEXT PRIMARY KEY,
+		name       TEXT NOT NULL,
+		type       TEXT NOT NULL,
+		stack_id   TEXT NOT NULL DEFAULT '',
+		parent_id  TEXT NOT NULL DEFAULT '',
+		config     TEXT NOT NULL DEFAULT '{}',
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE UNIQUE INDEX IF NOT EXISTS secret_connections_global_name ON secret_connections (name) WHERE stack_id = '';
+	CREATE TABLE IF NOT EXISTS stack_secret_bindings (
+		stack_id      TEXT NOT NULL,
+		type          TEXT NOT NULL,
+		connection_id TEXT NOT NULL,
+		prefixes      TEXT NOT NULL DEFAULT '[]',
+		PRIMARY KEY (stack_id, type)
 	);`
 	// Migration: host_images' primary key used to be (host_id,
 	// repository, tag) -- itself an earlier fix for a multi-tag image's
@@ -425,6 +442,12 @@ func (s *Store) DeleteStack(id string) error {
 	}
 	if _, err := tx.Exec(`DELETE FROM image_policies WHERE stack_id = ?`, id); err != nil {
 		return fmt.Errorf("delete stack %q: image policies: %w", id, err)
+	}
+	if _, err := tx.Exec(`DELETE FROM stack_secret_bindings WHERE stack_id = ?`, id); err != nil {
+		return fmt.Errorf("delete stack %q: secret bindings: %w", id, err)
+	}
+	if _, err := tx.Exec(`DELETE FROM secret_connections WHERE stack_id = ?`, id); err != nil {
+		return fmt.Errorf("delete stack %q: secret connections: %w", id, err)
 	}
 	res, err := tx.Exec(`DELETE FROM stacks WHERE id = ?`, id)
 	if err != nil {

@@ -287,6 +287,50 @@
 {{end}}
 {{end}}
 
+<section class="panel" id="secret-refs">
+  <h2>Secret references</h2>
+  <p class="muted" style="font-size:12px;">Providers this stack's <code>secrets.refs.yaml</code> can read from (<code>ref+&lt;provider&gt;://path#/field</code>). Only the paths listed here are readable; a reference outside them fails the deploy.</p>
+  <table>
+    <thead><tr><th>Provider</th><th>Connection</th><th>Allowed paths</th><th></th></tr></thead>
+    <tbody>
+      <tr>
+        <td>sops</td>
+        <td colspan="3" class="muted">Built in — reads this stack's own <code>secrets.enc.yaml</code> (<code>ref+sops://secrets.enc.yaml#/KEY</code>).</td>
+      </tr>
+      {{range .SecretBindings}}
+      <tr>
+        <td>{{.Label}}</td>
+        <td>
+          {{if eq .Mode "shared"}}{{.Connection}}
+          {{else if eq .Mode "own"}}{{.Connection}} <span class="badge">own credentials</span>
+          {{else if eq .Mode "separate"}}<span class="badge">own connection</span>
+          {{else}}<span class="badge status-failed">{{.Connection}}</span>{{end}}
+        </td>
+        <td><code>{{.Prefixes}}</code></td>
+        <td class="row-actions">
+          {{if eq $.Role "admin"}}
+          <form method="post" action="/stacks/{{$.Stack.ID}}/secrets/bindings/{{.Type}}/test" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Test</button>
+          </form>
+          <a href="/stacks/{{$.Stack.ID}}/secrets/bindings/{{.Type}}" class="btn btn-ghost btn-sm">Edit</a>
+          <form method="post" action="/stacks/{{$.Stack.ID}}/secrets/bindings/{{.Type}}/delete" class="inline-form" data-confirm="Remove this connection from the stack? References that use it will fail the next deploy.">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Remove</button>
+          </form>
+          {{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{if and .UnboundConnectors (eq .Role "admin")}}
+  <p style="margin-top:12px;">
+    {{range .UnboundConnectors}}<a href="/stacks/{{$.Stack.ID}}/secrets/bindings/{{.Scheme}}" class="btn btn-ghost btn-sm" style="margin-right:8px;">Add {{.Label}}</a>{{end}}
+  </p>
+  {{end}}
+</section>
+
 <section class="panel">
   <h2>Public key (age)</h2>
   <p class="muted">Use it to encrypt <code>secrets.enc.yaml</code> locally if this stack lives on Git — either <strong>plain age</strong> (<code>age -r &lt;this key&gt; -o secrets.enc.yaml secrets.yaml</code>) or <strong>SOPS</strong> with age as its backend (<code>sops -e --age &lt;this key&gt; secrets.yaml &gt; secrets.enc.yaml</code>); Wharf detects which one it is. The private key never leaves the controller. No <code>age</code>/<code>sops</code> installed locally? <a href="/tools/secrets?stack={{.Stack.ID}}">Encrypt it here instead</a>.</p>

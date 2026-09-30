@@ -83,6 +83,11 @@ func Open(path string) (*Custodian, error) {
 		kind       TEXT NOT NULL,
 		url        TEXT NOT NULL,
 		updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE IF NOT EXISTS secret_connection_credentials (
+		connection_id TEXT PRIMARY KEY,
+		data          TEXT NOT NULL,
+		updated_at    TEXT NOT NULL DEFAULT (datetime('now'))
 	);`
 	if _, err := db.Exec(schema); err != nil {
 		db.Close()

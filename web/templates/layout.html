@@ -23,10 +23,12 @@
         <a href="/volumes" class="{{if eq .Nav "volumes"}}active{{end}}">Volumes</a>
         <a href="/networks" class="{{if eq .Nav "networks"}}active{{end}}">Networks</a>
         {{if eq .Role "admin"}}
+        <div class="nav-section">Tools</div>
+        <a href="/tools/secrets" class="{{if eq .Nav "secrets-tool"}}active{{end}}">Encrypt secrets</a>
         <div class="nav-section">Settings</div>
         <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
         <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
-        <a href="/tools/secrets" class="{{if eq .Nav "secrets-tool"}}active{{end}}">Encrypt secrets</a>
+        <a href="/settings/secret-providers" class="{{if eq .Nav "secret-providers"}}active{{end}}">Secret providers</a>
         <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
         <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
         <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
@@ -365,6 +367,13 @@
         }
       });
     });
+    document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+      form.addEventListener('submit', function (e) {
+        if (!confirm(form.dataset.confirm)) {
+          e.preventDefault();
+        }
+      });
+    });
     document.querySelectorAll('.delete-user-form').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         if (!confirm('Delete this user? Their sessions end immediately and this can\'t be undone.')) {
@@ -556,4 +565,20 @@
   {{template "content" .}}
 </body>
 </html>
+{{end}}
+
+{{define "field"}}
+<div class="form-row">
+  <label>{{.Label}}{{if .Required}} *{{end}}</label>
+  {{if .IsSelect}}
+  <select name="{{.InputName}}">{{range .Options}}<option value="{{.Value}}" {{if .Selected}}selected{{end}}>{{.Value}}</option>{{end}}</select>
+  {{else if .IsTextarea}}
+  <textarea name="{{.InputName}}" rows="4" placeholder="{{.Placeholder}}">{{.Value}}</textarea>
+  {{else if .Credential}}
+  <input type="password" name="{{.InputName}}" autocomplete="off" placeholder="{{if .Set}}set — type to replace{{else}}{{.Placeholder}}{{end}}">
+  {{else}}
+  <input type="text" name="{{.InputName}}" value="{{.Value}}" placeholder="{{.Placeholder}}" {{if .Required}}required{{end}}>
+  {{end}}
+  {{if .Help}}<p class="muted" style="font-size:12px;">{{.Help}}</p>{{end}}
+</div>
 {{end}}
