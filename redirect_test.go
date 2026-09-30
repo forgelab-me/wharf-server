@@ -24,3 +24,24 @@ func TestAppendQuery(t *testing.T) {
 		}
 	}
 }
+
+func TestLocalPath(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"/stacks/x", "/stacks/x"},
+		{"/containers//evil.com", "/containers//evil.com"},
+		{"//evil.com", "/"},
+		{`/\evil.com`, "/"},
+		{"https://evil.com", "/"},
+		{"evil.com", "/"},
+		{"", "/"},
+		{"/ok\r\nSet-Cookie: x=1", "/"},
+	}
+	for _, c := range cases {
+		if got := localPath(c.in); got != c.want {
+			t.Errorf("localPath(%q) = %q, want %q", c.in, got, c.want)
+		}
+	}
+	if got := appendQuery("//evil.com", "error=x"); got != "/?error=x" {
+		t.Errorf("appendQuery must not carry an off-site path: %q", got)
+	}
+}

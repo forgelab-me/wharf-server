@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.15.4] - 2026-09-30
+
+### Security
+- Every redirect that carries a banner or a toast now refuses a target that leaves the site (one starting with `//` or a backslash) and goes to `/` instead. No such target could be built from a request today: they all start with a fixed path. This is a guard for the day one could, and it answers CodeQL's "open URL redirect" finding.
+
 ## [0.15.3] - 2026-09-30
 
 ### Security

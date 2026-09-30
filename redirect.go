@@ -20,11 +20,23 @@ import (
 // ".../browse?path=foo?error=bar", one query value instead of two
 // params -- both the error message and the path navigation broke).
 func appendQuery(path, query string) string {
+	path = localPath(path)
 	sep := "?"
 	if strings.Contains(path, "?") {
 		sep = "&"
 	}
 	return path + sep + query
+}
+
+// localPath returns path if it stays on this site, "/" otherwise: every
+// redirect target is built here from route values and constants, but a
+// value that ever began with "//" or a slash and a backslash would be
+// read by browsers as another host.
+func localPath(path string) string {
+	if !strings.HasPrefix(path, "/") || strings.HasPrefix(path, "//") || strings.HasPrefix(path, `/\`) || strings.ContainsAny(path, "\r\n") {
+		return "/"
+	}
+	return path
 }
 
 // redirectWithError sends the user back to path with message shown as a
