@@ -2,6 +2,13 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.15.0] - 2026-09-30
+
+### Added
+- Optional vulnerability scanning (Settings → Vulnerability scanning, admin only, off by default) with **Trivy** or **Grype**, one at a time. The controller reads each image straight from its registry, by digest, for the platform of the host that runs it: nothing is pulled onto a host. It scans every image a container runs on any host, managed by Wharf or not, and, for each image policy, the applied digest and the one an update would bring. Results show as badges next to images (Containers, a container's page, Images, and a stack's Images panel, applied against latest) and open a findings page: severity, package, installed and fixed-in version, filterable to what has a fix. Counts are per distinct vulnerability. An image the scanner could not read (no operating system detected) shows "nothing detected", never "clean"; a failed scan (wrong registry password, unreachable registry) shows "scan failed" with the reason, and is retried on the next pass.
+- The scanner is downloaded when scanning is turned on, not shipped in the image: a pinned release whose SHA-256 is verified before it is ever run (Trivy 0.74.0, Grype 0.119.0), stored with its database (about 1.4 GB for Trivy, 2.8 GB for Grype) in a new `/cache` volume, after checking that the free space is enough. It runs without a shell, with a minimal environment and a time limit per image; registry credentials (Settings → Registry) reach it through its environment, never its command line. A full pass with a database refresh runs every six hours; **Scan now**, **Update database** and **Delete scanner data** are available, and each action is recorded in the audit log (`scan.*`).
+- Container-to-image links are exact: the controller now keeps the image id each container runs, each image's registry digest and each host's CPU architecture, all reported by agent 0.6.0 (an older agent's containers show "update agent" instead of a scan).
+
 ## [0.14.1] - 2026-09-29
 
 ### Fixed

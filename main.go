@@ -52,6 +52,7 @@ type app struct {
 	polls       *pollRegistry     // cron.EntryID par stack en polling, cf. poller.go
 	dataDir     string            // cf. backup.go -- where wharf.db/keys.db/identity actually live
 	notifyState *notifyState      // cf. notifications.go -- "already notified" tracking, level-triggered events
+	vuln        *vulnEngine       // cf. vulnscan.go -- image vulnerability scanning
 	resolver    *secrets.Resolver // cf. agent_resolve.go -- secrets.refs.yaml providers
 }
 
@@ -315,6 +316,11 @@ func main() {
 	// time (cronParser in poller.go) — registration must never accept a
 	// spec its own validation already approved.
 	a.cron = cron.New(cron.WithParser(cronParser))
+	cacheDir := os.Getenv("WHARF_CACHE_DIR")
+	if cacheDir == "" {
+		cacheDir = "/cache"
+	}
+	a.vuln = newVulnEngine(a, cacheDir)
 	existingStacks, err := st.ListStacks()
 	if err != nil {
 		log.Fatal("list stacks for polling registration: ", err)
@@ -338,6 +344,9 @@ func main() {
 	}
 	if err := registerAuditRetention(a); err != nil {
 		log.Fatal("register audit retention: ", err)
+	}
+	if err := registerVulnScanning(a); err != nil {
+		log.Fatal("register vulnerability scanning: ", err)
 	}
 	a.cron.Start()
 	defer a.cron.Stop()
@@ -451,6 +460,12 @@ func main() {
 	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}", requireAdmin(a.saveStackBindingHandler))
 	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}/delete", requireAdmin(a.deleteStackBindingHandler))
 	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}/test", requireAdmin(a.testStackBindingHandler))
+	mux.HandleFunc("GET /settings/vulnerability-scanning", requireAdmin(a.settingsVulnHandler))
+	mux.HandleFunc("POST /settings/vulnerability-scanning", requireAdmin(a.saveVulnHandler))
+	mux.HandleFunc("POST /settings/vulnerability-scanning/scan", requireAdmin(a.vulnActionHandler("scan")))
+	mux.HandleFunc("POST /settings/vulnerability-scanning/update-db", requireAdmin(a.vulnActionHandler("update-db")))
+	mux.HandleFunc("POST /settings/vulnerability-scanning/purge", requireAdmin(a.purgeVulnHandler))
+	mux.HandleFunc("GET /scans/{digest}", a.scanDetailHandler)
 	mux.HandleFunc("GET /tools/secrets", requireAdmin(a.secretsToolFormHandler))
 	mux.HandleFunc("POST /tools/secrets/encrypt", requireAdmin(a.encryptSecretsToolHandler))
 

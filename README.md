@@ -40,9 +40,12 @@ services:
       WHARF_ADMIN_PASSWORD: ${WHARF_ADMIN_PASSWORD:?WHARF_ADMIN_PASSWORD must be set}
     volumes:
       - wharf-data:/data
+      # optional: only needed for vulnerability scanning (gigabytes, see the docs)
+      - wharf-cache:/cache
 
 volumes:
   wharf-data:
+  wharf-cache:
 ```
 
 ### Ports
@@ -67,6 +70,7 @@ server/
 ├── images.go, volumes.go, networks.go   Docker resource list/detail pages
 ├── imagepolicies.go       pin/auto/propose image-update tracking
 ├── imagepoller.go         background digest-check scheduler
+├── vulnscan.go, vulnscan_ui.go   optional image vulnerability scanning (engine, pages, badges)
 ├── poller.go              Git polling-trigger scheduler
 ├── stats.go               live CPU/mem/disk stats (container + host)
 ├── tunnel.go              the agent-facing WebSocket protocol
@@ -76,6 +80,7 @@ server/
 │   ├── keys/               the secrets custodian — a *separate* SQLite database
 │   │                      holding every age/SSH private key, registry and OIDC
 │   │                      secrets. Never imports internal/store.
+│   ├── scanner/            Trivy and Grype as subprocesses: pinned download, scan, normalized findings
 │   ├── registry/           generic Docker Registry v2 client (WWW-Authenticate
 │   │                      discovery — no per-vendor hardcoding beyond docker.io's
 │   │                      own domain quirk)

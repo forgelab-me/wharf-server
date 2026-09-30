@@ -128,7 +128,8 @@ func Open(path string) (*Store, error) {
 		last_seen_at     TEXT NOT NULL DEFAULT (datetime('now')),
 		created_at       TEXT NOT NULL DEFAULT (datetime('now')),
 		address          TEXT NOT NULL DEFAULT '',
-		agent_version    TEXT NOT NULL DEFAULT ''
+		agent_version    TEXT NOT NULL DEFAULT '',
+		arch             TEXT NOT NULL DEFAULT ''
 	);
 	CREATE TABLE IF NOT EXISTS deployments (
 		id           TEXT PRIMARY KEY,
@@ -170,6 +171,7 @@ func Open(path string) (*Store, error) {
 		service_name TEXT NOT NULL DEFAULT '',
 		mounts       TEXT NOT NULL DEFAULT '',
 		networks     TEXT NOT NULL DEFAULT '',
+		image_id     TEXT NOT NULL DEFAULT '',
 		updated_at   TEXT NOT NULL DEFAULT (datetime('now')),
 		PRIMARY KEY (host_id, container_id)
 	);
@@ -179,6 +181,7 @@ func Open(path string) (*Store, error) {
 		repository TEXT NOT NULL DEFAULT '',
 		tag        TEXT NOT NULL DEFAULT '',
 		size       TEXT NOT NULL DEFAULT '',
+		digest     TEXT NOT NULL DEFAULT '',
 		updated_at TEXT NOT NULL DEFAULT (datetime('now')),
 		PRIMARY KEY (host_id, image_id, repository, tag)
 	);
@@ -254,6 +257,33 @@ func Open(path string) (*Store, error) {
 		connection_id TEXT NOT NULL,
 		prefixes      TEXT NOT NULL DEFAULT '[]',
 		PRIMARY KEY (stack_id, type)
+	);
+	CREATE TABLE IF NOT EXISTS image_scans (
+		scanner          TEXT NOT NULL,
+		repository       TEXT NOT NULL,
+		digest           TEXT NOT NULL,
+		platform         TEXT NOT NULL,
+		status           TEXT NOT NULL,
+		error            TEXT NOT NULL DEFAULT '',
+		notice           TEXT NOT NULL DEFAULT '',
+		scanned_at       TEXT NOT NULL DEFAULT (datetime('now')),
+		db_built_at      TEXT NOT NULL DEFAULT '',
+		critical         INTEGER NOT NULL DEFAULT 0,
+		high             INTEGER NOT NULL DEFAULT 0,
+		medium           INTEGER NOT NULL DEFAULT 0,
+		low              INTEGER NOT NULL DEFAULT 0,
+		unknown          INTEGER NOT NULL DEFAULT 0,
+		fixable_critical INTEGER NOT NULL DEFAULT 0,
+		fixable_high     INTEGER NOT NULL DEFAULT 0,
+		findings         TEXT NOT NULL DEFAULT '[]',
+		PRIMARY KEY (scanner, digest, platform)
+	);
+	CREATE TABLE IF NOT EXISTS vuln_settings (
+		id            INTEGER PRIMARY KEY CHECK (id = 1),
+		enabled       INTEGER NOT NULL DEFAULT 0,
+		scanner       TEXT NOT NULL DEFAULT '',
+		last_pass_at  TEXT NOT NULL DEFAULT '',
+		last_pass_msg TEXT NOT NULL DEFAULT ''
 	);`
 	// Migration: host_images' primary key used to be (host_id,
 	// repository, tag) -- itself an earlier fix for a multi-tag image's
@@ -294,6 +324,17 @@ func Open(path string) (*Store, error) {
 	if _, err := db.Exec(`ALTER TABLE hosts ADD COLUMN agent_version TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 		db.Close()
 		return nil, fmt.Errorf("migrate hosts.agent_version: %w", err)
+	}
+	for _, m := range []struct{ table, column string }{
+		{"hosts", "arch"},
+		{"host_containers", "image_id"},
+		{"host_images", "digest"},
+		{"image_scans", "notice"},
+	} {
+		if _, err := db.Exec(`ALTER TABLE ` + m.table + ` ADD COLUMN ` + m.column + ` TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
+			db.Close()
+			return nil, fmt.Errorf("migrate %s.%s: %w", m.table, m.column, err)
+		}
 	}
 	// The file is guaranteed to exist by now (the schema exec above forced
 	// the driver to create it) -- tightened to owner-only every startup,
@@ -610,6 +651,28 @@ func (s *Store) SetHostAgentVersion(id, version string) error {
 		return fmt.Errorf("set host agent version %q: %w", id, err)
 	}
 	return nil
+}
+
+// SetHostArch records the CPU architecture a host's agent reported (amd64,
+// arm64...), which is the platform an image scan has to target.
+func (s *Store) SetHostArch(id, arch string) error {
+	if _, err := s.db.Exec(`UPDATE hosts SET arch = ? WHERE id = ?`, arch, id); err != nil {
+		return fmt.Errorf("set host arch %q: %w", id, err)
+	}
+	return nil
+}
+
+// HostArch returns a host's reported architecture, empty when unknown.
+func (s *Store) HostArch(id string) (string, error) {
+	var arch string
+	err := s.db.QueryRow(`SELECT arch FROM hosts WHERE id = ?`, id).Scan(&arch)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", ErrNotFound
+	}
+	if err != nil {
+		return "", fmt.Errorf("host arch %q: %w", id, err)
+	}
+	return arch, nil
 }
 
 // SetHostName renames a host -- purely a display label (the id, not the
@@ -1134,6 +1197,7 @@ type HostContainer struct {
 	ServiceName string
 	Mounts      string // comma-separated named volumes, cf. store.Volume "used by"
 	Networks    string // comma-separated network names, cf. store.Network "containers"
+	ImageID     string // 12-char id of the image it runs, empty from an agent that predates the field
 	HostName    string // joined in from hosts, only set by ListHostContainers
 }
 
@@ -1154,9 +1218,9 @@ func (s *Store) ReplaceHostContainers(hostID string, rows []HostContainer) error
 	}
 	for _, c := range rows {
 		_, err := tx.Exec(
-			`INSERT INTO host_containers (host_id, container_id, name, image, state, status, ports, created, stack_id, service_name, mounts, networks, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
-			hostID, c.ContainerID, c.Name, c.Image, c.State, c.Status, c.Ports, c.Created, c.StackID, c.ServiceName, c.Mounts, c.Networks,
+			`INSERT INTO host_containers (host_id, container_id, name, image, state, status, ports, created, stack_id, service_name, mounts, networks, image_id, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
+			hostID, c.ContainerID, c.Name, c.Image, c.State, c.Status, c.Ports, c.Created, c.StackID, c.ServiceName, c.Mounts, c.Networks, c.ImageID,
 		)
 		if err != nil {
 			return fmt.Errorf("replace host containers %q: insert %q: %w", hostID, c.ContainerID, err)
@@ -1167,7 +1231,7 @@ func (s *Store) ReplaceHostContainers(hostID string, rows []HostContainer) error
 
 func (s *Store) ListHostContainers() ([]HostContainer, error) {
 	rows, err := s.db.Query(
-		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, h.name
+		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, hc.image_id, h.name
 		 FROM host_containers hc JOIN hosts h ON h.id = hc.host_id
 		 ORDER BY hc.name`,
 	)
@@ -1179,7 +1243,7 @@ func (s *Store) ListHostContainers() ([]HostContainer, error) {
 	var out []HostContainer
 	for rows.Next() {
 		var c HostContainer
-		if err := rows.Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.HostName); err != nil {
+		if err := rows.Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.ImageID, &c.HostName); err != nil {
 			return nil, fmt.Errorf("scan host container: %w", err)
 		}
 		out = append(out, c)
@@ -1191,7 +1255,7 @@ func (s *Store) ListHostContainers() ([]HostContainer, error) {
 // what the stack detail page shows, rather than the fleet-wide list.
 func (s *Store) ListHostContainersByStack(stackID string) ([]HostContainer, error) {
 	rows, err := s.db.Query(
-		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, h.name
+		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, hc.image_id, h.name
 		 FROM host_containers hc JOIN hosts h ON h.id = hc.host_id
 		 WHERE hc.stack_id = ?
 		 ORDER BY hc.service_name, hc.name`, stackID,
@@ -1204,7 +1268,7 @@ func (s *Store) ListHostContainersByStack(stackID string) ([]HostContainer, erro
 	var out []HostContainer
 	for rows.Next() {
 		var c HostContainer
-		if err := rows.Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.HostName); err != nil {
+		if err := rows.Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.ImageID, &c.HostName); err != nil {
 			return nil, fmt.Errorf("scan host container: %w", err)
 		}
 		out = append(out, c)
@@ -1215,10 +1279,10 @@ func (s *Store) ListHostContainersByStack(stackID string) ([]HostContainer, erro
 func (s *Store) GetHostContainerByID(containerID string) (HostContainer, error) {
 	var c HostContainer
 	err := s.db.QueryRow(
-		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, h.name
+		`SELECT hc.host_id, hc.container_id, hc.name, hc.image, hc.state, hc.status, hc.ports, hc.created, hc.stack_id, hc.service_name, hc.mounts, hc.networks, hc.image_id, h.name
 		 FROM host_containers hc JOIN hosts h ON h.id = hc.host_id
 		 WHERE hc.container_id = ?`, containerID,
-	).Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.HostName)
+	).Scan(&c.HostID, &c.ContainerID, &c.Name, &c.Image, &c.State, &c.Status, &c.Ports, &c.Created, &c.StackID, &c.ServiceName, &c.Mounts, &c.Networks, &c.ImageID, &c.HostName)
 	if errors.Is(err, sql.ErrNoRows) {
 		return HostContainer{}, ErrNotFound
 	}
@@ -1245,6 +1309,7 @@ type HostImage struct {
 	Repository string
 	Tag        string
 	Size       string
+	Digest     string // registry digest of repository:tag, empty for a local build or an older agent
 	HostName   string // joined in from hosts, only set by ListHostImages
 }
 
@@ -1262,11 +1327,11 @@ func (s *Store) ReplaceHostImages(hostID string, rows []HostImage) error {
 	if _, err := tx.Exec(`DELETE FROM host_images WHERE host_id = ?`, hostID); err != nil {
 		return fmt.Errorf("replace host images %q: clear old: %w", hostID, err)
 	}
-	for _, img := range rows {
+	for _, img := range dedupeHostImages(rows) {
 		_, err := tx.Exec(
-			`INSERT INTO host_images (host_id, image_id, repository, tag, size, updated_at)
-			 VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-			hostID, img.ImageID, img.Repository, img.Tag, img.Size,
+			`INSERT INTO host_images (host_id, image_id, repository, tag, size, digest, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`,
+			hostID, img.ImageID, img.Repository, img.Tag, img.Size, img.Digest,
 		)
 		if err != nil {
 			return fmt.Errorf("replace host images %q: insert %q: %w", hostID, img.ImageID, err)
@@ -1275,9 +1340,30 @@ func (s *Store) ReplaceHostImages(hostID string, rows []HostImage) error {
 	return tx.Commit()
 }
 
+// dedupeHostImages keeps one row per (image id, repository, tag), the primary
+// key: an image with several registry digests can be listed once per digest,
+// and one duplicate would otherwise roll back the whole snapshot.
+func dedupeHostImages(rows []HostImage) []HostImage {
+	type key struct{ id, repo, tag string }
+	index := map[key]int{}
+	out := make([]HostImage, 0, len(rows))
+	for _, r := range rows {
+		k := key{r.ImageID, r.Repository, r.Tag}
+		if i, seen := index[k]; seen {
+			if r.Digest != "" && (out[i].Digest == "" || r.Digest < out[i].Digest) {
+				out[i].Digest = r.Digest
+			}
+			continue
+		}
+		index[k] = len(out)
+		out = append(out, r)
+	}
+	return out
+}
+
 func (s *Store) ListHostImages() ([]HostImage, error) {
 	rows, err := s.db.Query(
-		`SELECT hi.host_id, hi.image_id, hi.repository, hi.tag, hi.size, h.name
+		`SELECT hi.host_id, hi.image_id, hi.repository, hi.tag, hi.size, hi.digest, h.name
 		 FROM host_images hi JOIN hosts h ON h.id = hi.host_id
 		 ORDER BY hi.repository, hi.tag`,
 	)
@@ -1289,7 +1375,7 @@ func (s *Store) ListHostImages() ([]HostImage, error) {
 	var out []HostImage
 	for rows.Next() {
 		var img HostImage
-		if err := rows.Scan(&img.HostID, &img.ImageID, &img.Repository, &img.Tag, &img.Size, &img.HostName); err != nil {
+		if err := rows.Scan(&img.HostID, &img.ImageID, &img.Repository, &img.Tag, &img.Size, &img.Digest, &img.HostName); err != nil {
 			return nil, fmt.Errorf("scan host image: %w", err)
 		}
 		out = append(out, img)

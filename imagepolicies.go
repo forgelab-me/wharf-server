@@ -126,6 +126,8 @@ type imagePolicyViewRow struct {
 	AppliedShort    string
 	LatestShort     string
 	UpdateAvailable bool
+	AppliedScan     *scanBadge // nil unless vulnerability scanning is on
+	LatestScan      *scanBadge
 }
 
 func shortDigest(digest string) string {
@@ -143,9 +145,15 @@ func imagePolicyViewRows(a *app, stackID string) ([]imagePolicyViewRow, error) {
 	if err != nil {
 		return nil, err
 	}
+	scans := a.newScanIndex()
+	var hostID string
+	if st, err := a.store.GetStack(stackID); err == nil {
+		hostID = st.Host
+	}
 	rows := make([]imagePolicyViewRow, 0, len(policies))
 	for _, p := range policies {
 		row := imagePolicyViewRow{ImagePolicy: p, AppliedShort: shortDigest(p.AppliedDigest)}
+		row.AppliedScan = scans.forDigest(p.AppliedDigest, hostID)
 		// p.ImageRef is guaranteed parseable here: syncImagePolicies never
 		// creates a row for a digest-pinned image in the first place (cf.
 		// its own isDigestPinned skip), and ParseRef only ever rejects a
@@ -157,6 +165,7 @@ func imagePolicyViewRows(a *app, stackID string) ([]imagePolicyViewRow, error) {
 			row.LatestDigest = digest
 			row.LatestShort = shortDigest(digest)
 			row.UpdateAvailable = digest != p.AppliedDigest
+			row.LatestScan = scans.forDigest(digest, hostID)
 		}
 		rows = append(rows, row)
 	}

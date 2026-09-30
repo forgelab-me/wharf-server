@@ -47,7 +47,7 @@ Overview, live resources, processes, logs, environment (secrets masked), volumes
 ![Container details](screenshots/container-detail.png)
 
 ### Images
-Unused and dangling images, ready for a bulk clean-up.
+Unused and dangling images, ready for a bulk clean-up, and each image in use with its vulnerabilities when scanning is on.
 
 ![Images](screenshots/images-bulk-delete.png)
 
@@ -55,6 +55,23 @@ Unused and dangling images, ready for a bulk clean-up.
 Browse, edit, upload and download files inside a volume (admin only).
 
 ![Volume browser](screenshots/volume-browse.png)
+
+## Vulnerability scanning
+
+### Settings
+Optional, off by default: Trivy or Grype, downloaded on demand, reading each image from its registry by digest.
+
+![Vulnerability scanning settings](screenshots/vulnerability-scanning.png)
+
+### A stack's images
+What is applied and what an update would bring, each with its vulnerabilities.
+
+![Vulnerabilities in a stack's Images panel](screenshots/stack-image-scans.png)
+
+### Findings
+Every vulnerability of an image, filterable to what has a fix.
+
+![Findings of an image](screenshots/scan-findings.png)
 
 ## Secrets
 

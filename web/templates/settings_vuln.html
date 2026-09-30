@@ -1,0 +1,65 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Vulnerability scanning</h2>
+  <p class="muted" style="font-size:12px;">Scans the container images this fleet runs for known vulnerabilities, straight from their registry (by digest, so nothing is pulled onto a host): the digests your image policies applied and could apply next, and every image a container runs, managed by Wharf or not. Results appear as badges next to images; they inform, they do not block anything. Off by default: the scanner and its vulnerability database are downloaded when you turn it on, and the database takes gigabytes of disk.</p>
+
+  {{if .CacheErr}}
+  <p class="banner-error">{{.CacheErr}}. The scanner's binary and database live in <code>{{.CacheDir}}</code>, which needs its own volume, e.g. <code>-v wharf-cache:{{.CacheDir}}</code> on the controller.</p>
+  {{end}}
+
+  <form method="post" action="/settings/vulnerability-scanning">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row">
+      <label>Scanner</label>
+      {{range .Options}}
+      <label class="radio"><input type="radio" name="scanner" value="{{.Name}}" {{if .Selected}}checked{{end}}> {{.Label}} {{.Version}} <span class="muted">— database about {{.DBSize}}{{if .Installed}}, installed{{end}}</span></label>
+      {{end}}
+      <p class="muted" style="font-size:12px;">One at a time. They count differently, so the page always says which produced a number; switching drops the other's results and rescans.</p>
+    </div>
+    <div class="form-row">
+      <label class="radio"><input type="checkbox" name="enabled" value="1" {{if .Enabled}}checked{{end}}> Scan images</label>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" {{if .Status.Busy}}disabled{{end}}>Save</button>
+    </div>
+  </form>
+</section>
+
+{{if or .Enabled .Status.Busy .Status.Err}}
+<section class="panel">
+  <h2>Status</h2>
+  {{if .Status.Busy}}<p><span class="badge status-running">Working</span> {{.Status.Phase}}…</p>{{end}}
+  {{if .Status.Err}}<p class="banner-error">The last task failed: {{.Status.Err}}</p>{{end}}
+  {{if .ScannerLabel}}
+  <table class="kv-table">
+    <tr><th>Scanner</th><td>{{.ScannerLabel}} {{.ScannerVersion}}{{if not .Installed}} <span class="muted">(not installed yet)</span>{{end}}</td></tr>
+    <tr><th>Vulnerability database</th><td>{{if .DBBuilt}}built {{.DBBuilt}}{{else}}<span class="muted">none yet</span>{{end}}</td></tr>
+    <tr><th>Disk</th><td>{{if .DiskUsed}}{{.DiskUsed}} used{{end}}{{if .Free}} · {{.Free}} free in <code>{{.CacheDir}}</code>{{end}}</td></tr>
+    <tr><th>Last pass</th><td>{{if .LastPassAt}}{{.LastPassAt}} — {{.LastPassMsg}}{{else}}<span class="muted">not yet</span>{{end}}</td></tr>
+    <tr><th>Images scanned</th><td>{{.ScansOK}}{{if .ScansFailed}} <span class="muted">· {{.ScansFailed}} failed</span>{{end}}{{if .FixableCritical}} · <strong>{{.FixableCritical}}</strong> critical with a fix{{end}}</td></tr>
+  </table>
+  {{end}}
+  <div class="row-actions" style="justify-content:flex-start; gap:10px; margin-top:12px;">
+    {{if .Enabled}}
+    <form method="post" action="/settings/vulnerability-scanning/scan" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost" {{if .Status.Busy}}disabled{{end}}>Scan now</button>
+    </form>
+    <form method="post" action="/settings/vulnerability-scanning/update-db" class="inline-form">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost" {{if .Status.Busy}}disabled{{end}}>Update database</button>
+    </form>
+    {{end}}
+    <form method="post" action="/settings/vulnerability-scanning/purge" class="inline-form" data-confirm="Delete the scanner, its database and every result? Scanning is turned off.">
+      <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+      <button type="submit" class="btn btn-ghost" {{if .Status.Busy}}disabled{{end}}>Delete scanner data</button>
+    </form>
+  </div>
+  <p class="muted" style="font-size:12px; margin-top:12px;">A full pass with a database refresh runs every six hours. Only images with a registry digest can be scanned: an image built on the host has none, and an agent older than 0.6.0 does not report them.</p>
+</section>
+{{end}}
+
+{{if .Status.Busy}}
+<script>setTimeout(function () { location.reload(); }, 4000);</script>
+{{end}}
+{{end}}

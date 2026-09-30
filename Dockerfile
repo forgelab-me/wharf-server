@@ -32,4 +32,7 @@ LABEL org.opencontainers.image.title="wharf-server" \
 # cf. ARCHITECTURE.md: le fichier SQLite principal et le store du
 # secrets-service doivent survivre aux recréations du container.
 VOLUME /data
+# Optional vulnerability scanner binaries and databases, downloaded when an admin
+# turns scanning on: gigabytes, so a volume of their own, never /data.
+VOLUME /cache
 ENTRYPOINT ["wharf-server"]

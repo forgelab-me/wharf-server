@@ -25,6 +25,7 @@
           <code>{{.ImageDisplay}}</code>
           {{if eq .UpdateStatus "current"}}<span class="badge status-succeeded">up to date</span>{{end}}
           {{if eq .UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
+          {{template "scanbadge" .Scan}}
         </td>
         <td>{{.Host}}</td>
         <td>{{if .ManagedStack}}<a href="/stacks/{{.Stack}}">{{.Stack}}</a>{{else if .Stack}}<span class="muted" title="Not tracked by Wharf — deployed by something else">{{.Stack}}</span>{{else}}<span class="muted">—</span>{{end}}</td>

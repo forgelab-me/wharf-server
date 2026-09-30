@@ -32,6 +32,7 @@ type Container struct {
 	ID, Name, ImageDisplay, Host, State, Status, Created, Stack, UpdateStatus string
 	ManagedStack                                                              bool
 	Ports                                                                     []portLink
+	Scan                                                                      *scanBadge // nil unless vulnerability scanning is on and the image is known
 }
 
 // cleanImageName strips the digest half of a container's Image field --
@@ -145,10 +146,13 @@ func (a *app) containersHandler(w http.ResponseWriter, r *http.Request) {
 	updateStatuses := containerUpdateStatuses(a)
 	managedStacks := managedStackSet(a)
 
+	scans := a.newScanIndex()
 	containers := make([]Container, 0, len(rows))
 	for _, c := range rows {
 		status := updateStatuses[c.StackID][c.ServiceName]
-		containers = append(containers, containerViewFromRow(c, addresses[c.HostID], status, managedStacks[c.StackID]))
+		view := containerViewFromRow(c, addresses[c.HostID], status, managedStacks[c.StackID])
+		view.Scan = scans.forImage(c.HostID, c.ImageID)
+		containers = append(containers, view)
 	}
 
 	data := map[string]any{
@@ -211,10 +215,12 @@ func (a *app) containerDetailHandler(w http.ResponseWriter, r *http.Request) {
 		wg.Wait()
 	}
 
+	view := containerViewFromRow(c, address, updateStatus, managedStack)
+	view.Scan = a.newScanIndex().forImage(c.HostID, c.ImageID)
 	data := map[string]any{
 		"Title":     c.Name,
 		"Nav":       "containers",
-		"Container": containerViewFromRow(c, address, updateStatus, managedStack),
+		"Container": view,
 		"Detail":    detail,
 		"EnvVars":   envVars,
 		"Volumes":   volumes,

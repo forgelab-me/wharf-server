@@ -553,3 +553,11 @@ fieldset legend { font-size: 13px; color: var(--text-muted); margin-bottom: 6px;
 
 /* A full-length certificate fingerprint has no natural break point; let it wrap inside its cell. */
 .fp-cell code { white-space: normal; overflow-wrap: anywhere; }
+
+/* Vulnerability scan summaries */
+.badge.scan-critical { background: rgba(242, 114, 114, 0.15); color: var(--danger); }
+.badge.scan-high { background: rgba(240, 145, 58, 0.16); color: #f0913a; }
+.badge.scan-medium { background: rgba(124, 143, 163, 0.15); color: var(--text-muted); }
+.badge.scan-clean { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+.badge.scan-none { background: var(--bg-elevated); color: var(--text-muted); text-transform: none; }
+a.badge[class*="scan-"] { text-decoration: none; }

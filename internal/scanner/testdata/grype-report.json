@@ -1,0 +1,1758 @@
+{
+ "matches": [
+  {
+   "vulnerability": {
+    "id": "CVE-2025-60876",
+    "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2025-60876",
+    "namespace": "nvd:cpe",
+    "severity": "Medium",
+    "urls": [
+     "https://gist.github.com/subyumatest/41554af6a72aedaacaec026adc311092",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250823/ccdc96ef/attachment-0001.htm",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250828/e7f90492/attachment.htm",
+     "https://cert-portal.siemens.com/productcert/html/ssa-253495.html"
+    ],
+    "description": "BusyBox wget thru 1.3.7 accepted raw CR (0x0D)/LF (0x0A) and other C0 control bytes in the HTTP request-target (path/query), allowing the request line to be split and attacker-controlled headers to be injected. To preserve the HTTP/1.1 request-line shape METHOD SP request-target SP HTTP/1.1, a raw space (0x20) in the request-target must also be rejected (clients should use %20).",
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2025-60876",
+      "epss": 0.00291,
+      "percentile": 0.19482,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2025-60876",
+      "cwe": "CWE-284",
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [],
+     "state": ""
+    },
+    "advisories": [],
+    "risk": 0.16732499999999997
+   },
+   "relatedVulnerabilities": [],
+   "matchDetails": [
+    {
+     "type": "cpe-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "namespace": "nvd:cpe",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:1.36.1:*:*:*:*:*:*:*"
+      ],
+      "package": {
+       "name": "busybox",
+       "version": "1.36.1-r20"
+      }
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2025-60876",
+      "versionConstraint": "<= 1.37.0 (unknown)",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:*:*:*:*:*:*:*:*"
+      ]
+     }
+    }
+   ],
+   "artifact": {
+    "id": "27d66ed59ca16b92",
+    "name": "busybox",
+    "version": "1.36.1-r20",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "GPL-2.0-only"
+    ],
+    "cpes": [
+     "cpe:2.3:a:busybox:busybox:1.36.1-r20:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/busybox@1.36.1-r20?arch=x86_64&distro=alpine-3.19.9",
+    "upstreams": [
+     {
+      "name": "busybox"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/bin"
+      },
+      {
+       "path": "/bin/busybox"
+      },
+      {
+       "path": "/etc"
+      },
+      {
+       "path": "/etc/securetty"
+      },
+      {
+       "path": "/etc/udhcpd.conf"
+      },
+      {
+       "path": "/etc/busybox-paths.d"
+      },
+      {
+       "path": "/etc/busybox-paths.d/busybox"
+      },
+      {
+       "path": "/etc/logrotate.d"
+      },
+      {
+       "path": "/etc/logrotate.d/acpid"
+      },
+      {
+       "path": "/etc/network"
+      },
+      {
+       "path": "/etc/network/if-down.d"
+      },
+      {
+       "path": "/etc/network/if-post-down.d"
+      },
+      {
+       "path": "/etc/network/if-post-up.d"
+      },
+      {
+       "path": "/etc/network/if-pre-down.d"
+      },
+      {
+       "path": "/etc/network/if-pre-up.d"
+      },
+      {
+       "path": "/etc/network/if-up.d"
+      },
+      {
+       "path": "/etc/network/if-up.d/dad"
+      },
+      {
+       "path": "/etc/udhcpc"
+      },
+      {
+       "path": "/etc/udhcpc/udhcpc.conf"
+      },
+      {
+       "path": "/sbin"
+      },
+      {
+       "path": "/tmp"
+      },
+      {
+       "path": "/usr"
+      },
+      {
+       "path": "/usr/sbin"
+      },
+      {
+       "path": "/usr/share"
+      },
+      {
+       "path": "/usr/share/udhcpc"
+      },
+      {
+       "path": "/usr/share/udhcpc/default.script"
+      },
+      {
+       "path": "/var"
+      },
+      {
+       "path": "/var/cache"
+      },
+      {
+       "path": "/var/cache/misc"
+      },
+      {
+       "path": "/var/lib"
+      },
+      {
+       "path": "/var/lib/udhcpd"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-60876",
+    "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2025-60876",
+    "namespace": "nvd:cpe",
+    "severity": "Medium",
+    "urls": [
+     "https://gist.github.com/subyumatest/41554af6a72aedaacaec026adc311092",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250823/ccdc96ef/attachment-0001.htm",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250828/e7f90492/attachment.htm",
+     "https://cert-portal.siemens.com/productcert/html/ssa-253495.html"
+    ],
+    "description": "BusyBox wget thru 1.3.7 accepted raw CR (0x0D)/LF (0x0A) and other C0 control bytes in the HTTP request-target (path/query), allowing the request line to be split and attacker-controlled headers to be injected. To preserve the HTTP/1.1 request-line shape METHOD SP request-target SP HTTP/1.1, a raw space (0x20) in the request-target must also be rejected (clients should use %20).",
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2025-60876",
+      "epss": 0.00291,
+      "percentile": 0.19482,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2025-60876",
+      "cwe": "CWE-284",
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [],
+     "state": ""
+    },
+    "advisories": [],
+    "risk": 0.16732499999999997
+   },
+   "relatedVulnerabilities": [],
+   "matchDetails": [
+    {
+     "type": "cpe-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "namespace": "nvd:cpe",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:1.36.1:*:*:*:*:*:*:*"
+      ],
+      "package": {
+       "name": "busybox",
+       "version": "1.36.1-r20"
+      }
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2025-60876",
+      "versionConstraint": "<= 1.37.0 (unknown)",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:*:*:*:*:*:*:*:*"
+      ]
+     }
+    }
+   ],
+   "artifact": {
+    "id": "c350666544085d21",
+    "name": "busybox-binsh",
+    "version": "1.36.1-r20",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "GPL-2.0-only"
+    ],
+    "cpes": [
+     "cpe:2.3:a:busybox-binsh:busybox-binsh:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:busybox-binsh:busybox_binsh:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:busybox_binsh:busybox-binsh:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:busybox_binsh:busybox_binsh:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:busybox:busybox-binsh:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:busybox:busybox_binsh:1.36.1-r20:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/busybox-binsh@1.36.1-r20?arch=x86_64&distro=alpine-3.19.9&upstream=busybox",
+    "upstreams": [
+     {
+      "name": "busybox"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/bin"
+      },
+      {
+       "path": "/bin/sh"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2025-60876",
+    "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2025-60876",
+    "namespace": "nvd:cpe",
+    "severity": "Medium",
+    "urls": [
+     "https://gist.github.com/subyumatest/41554af6a72aedaacaec026adc311092",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250823/ccdc96ef/attachment-0001.htm",
+     "https://lists.busybox.net/pipermail/busybox/attachments/20250828/e7f90492/attachment.htm",
+     "https://cert-portal.siemens.com/productcert/html/ssa-253495.html"
+    ],
+    "description": "BusyBox wget thru 1.3.7 accepted raw CR (0x0D)/LF (0x0A) and other C0 control bytes in the HTTP request-target (path/query), allowing the request line to be split and attacker-controlled headers to be injected. To preserve the HTTP/1.1 request-line shape METHOD SP request-target SP HTTP/1.1, a raw space (0x20) in the request-target must also be rejected (clients should use %20).",
+    "cvss": [
+     {
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N",
+      "metrics": {
+       "baseScore": 6.5,
+       "exploitabilityScore": 3.9,
+       "impactScore": 2.6
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2025-60876",
+      "epss": 0.00291,
+      "percentile": 0.19482,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2025-60876",
+      "cwe": "CWE-284",
+      "source": "134c704f-9b21-4f2e-91b3-4a467353bcc0",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [],
+     "state": ""
+    },
+    "advisories": [],
+    "risk": 0.16732499999999997
+   },
+   "relatedVulnerabilities": [],
+   "matchDetails": [
+    {
+     "type": "cpe-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "namespace": "nvd:cpe",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:1.36.1:*:*:*:*:*:*:*"
+      ],
+      "package": {
+       "name": "busybox",
+       "version": "1.36.1-r20"
+      }
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2025-60876",
+      "versionConstraint": "<= 1.37.0 (unknown)",
+      "cpes": [
+       "cpe:2.3:a:busybox:busybox:*:*:*:*:*:*:*:*"
+      ]
+     }
+    }
+   ],
+   "artifact": {
+    "id": "bdaa535a4f60091f",
+    "name": "ssl_client",
+    "version": "1.36.1-r20",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "GPL-2.0-only"
+    ],
+    "cpes": [
+     "cpe:2.3:a:ssl-client:ssl-client:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:ssl-client:ssl_client:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:ssl_client:ssl-client:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:ssl_client:ssl_client:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:ssl:ssl-client:1.36.1-r20:*:*:*:*:*:*:*",
+     "cpe:2.3:a:ssl:ssl_client:1.36.1-r20:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/ssl_client@1.36.1-r20?arch=x86_64&distro=alpine-3.19.9&upstream=busybox",
+    "upstreams": [
+     {
+      "name": "busybox"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/usr"
+      },
+      {
+       "path": "/usr/bin"
+      },
+      {
+       "path": "/usr/bin/ssl_client"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-40200",
+    "dataSource": "https://security.alpinelinux.org/vuln/CVE-2026-40200",
+    "namespace": "alpine:distro:alpine:3.19",
+    "severity": "High",
+    "urls": [],
+    "cvss": [
+     {
+      "source": "cve@mitre.org",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 8.1,
+       "exploitabilityScore": 1.5,
+       "impactScore": 6.1
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2026-40200",
+      "epss": 0.00171,
+      "percentile": 0.05811,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2026-40200",
+      "cwe": "CWE-670",
+      "source": "cve@mitre.org",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [
+      "1.2.4_git20230717-r6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.2.4_git20230717-r6",
+       "date": "2026-04-11",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "advisories": [],
+    "risk": 0.13338
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-40200",
+     "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-40200",
+     "namespace": "nvd:cpe",
+     "severity": "High",
+     "urls": [
+      "https://musl.libc.org/releases.html",
+      "https://www.openwall.com/lists/oss-security/2026/04/10/13",
+      "http://www.openwall.com/lists/oss-security/2026/04/10/13"
+     ],
+     "description": "An issue was discovered in musl libc 0.7.10 through 1.2.6. Stack-based memory corruption can occur during qsort of very large arrays, due to incorrectly implemented double-word primitives. The number of elements must exceed about seven million, i.e., the 32nd Leonardo number on 32-bit platforms (or the 64th Leonardo number on 64-bit platforms, which is not practical).",
+     "cvss": [
+      {
+       "source": "cve@mitre.org",
+       "type": "Secondary",
+       "version": "3.1",
+       "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "metrics": {
+        "baseScore": 8.1,
+        "exploitabilityScore": 1.5,
+        "impactScore": 6.1
+       },
+       "vendorMetadata": {}
+      }
+     ],
+     "epss": [
+      {
+       "cve": "CVE-2026-40200",
+       "epss": 0.00171,
+       "percentile": 0.05811,
+       "date": "2026-09-29"
+      }
+     ],
+     "cwes": [
+      {
+       "cve": "CVE-2026-40200",
+       "cwe": "CWE-670",
+       "source": "cve@mitre.org",
+       "type": "Secondary"
+      }
+     ]
+    }
+   ],
+   "matchDetails": [
+    {
+     "type": "exact-direct-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-40200",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    },
+    {
+     "type": "exact-indirect-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-40200",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    }
+   ],
+   "artifact": {
+    "id": "e1a534fe8d92bc4c",
+    "name": "musl",
+    "version": "1.2.4_git20230717-r5",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "MIT"
+    ],
+    "cpes": [
+     "cpe:2.3:a:musl-libc:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_libc:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/musl@1.2.4_git20230717-r5?arch=x86_64&distro=alpine-3.19.9",
+    "upstreams": [
+     {
+      "name": "musl"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/lib"
+      },
+      {
+       "path": "/lib/ld-musl-x86_64.so.1"
+      },
+      {
+       "path": "/lib/libc.musl-x86_64.so.1"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-40200",
+    "dataSource": "https://security.alpinelinux.org/vuln/CVE-2026-40200",
+    "namespace": "alpine:distro:alpine:3.19",
+    "severity": "High",
+    "urls": [],
+    "cvss": [
+     {
+      "source": "cve@mitre.org",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+      "metrics": {
+       "baseScore": 8.1,
+       "exploitabilityScore": 1.5,
+       "impactScore": 6.1
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2026-40200",
+      "epss": 0.00171,
+      "percentile": 0.05811,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2026-40200",
+      "cwe": "CWE-670",
+      "source": "cve@mitre.org",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [
+      "1.2.4_git20230717-r6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.2.4_git20230717-r6",
+       "date": "2026-04-11",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "advisories": [],
+    "risk": 0.13338
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-40200",
+     "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-40200",
+     "namespace": "nvd:cpe",
+     "severity": "High",
+     "urls": [
+      "https://musl.libc.org/releases.html",
+      "https://www.openwall.com/lists/oss-security/2026/04/10/13",
+      "http://www.openwall.com/lists/oss-security/2026/04/10/13"
+     ],
+     "description": "An issue was discovered in musl libc 0.7.10 through 1.2.6. Stack-based memory corruption can occur during qsort of very large arrays, due to incorrectly implemented double-word primitives. The number of elements must exceed about seven million, i.e., the 32nd Leonardo number on 32-bit platforms (or the 64th Leonardo number on 64-bit platforms, which is not practical).",
+     "cvss": [
+      {
+       "source": "cve@mitre.org",
+       "type": "Secondary",
+       "version": "3.1",
+       "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H",
+       "metrics": {
+        "baseScore": 8.1,
+        "exploitabilityScore": 1.5,
+        "impactScore": 6.1
+       },
+       "vendorMetadata": {}
+      }
+     ],
+     "epss": [
+      {
+       "cve": "CVE-2026-40200",
+       "epss": 0.00171,
+       "percentile": 0.05811,
+       "date": "2026-09-29"
+      }
+     ],
+     "cwes": [
+      {
+       "cve": "CVE-2026-40200",
+       "cwe": "CWE-670",
+       "source": "cve@mitre.org",
+       "type": "Secondary"
+      }
+     ]
+    }
+   ],
+   "matchDetails": [
+    {
+     "type": "exact-indirect-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-40200",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    }
+   ],
+   "artifact": {
+    "id": "6edd1d8d7e97bc65",
+    "name": "musl-utils",
+    "version": "1.2.4_git20230717-r5",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "MIT AND BSD-2-Clause AND GPL-2.0-or-later"
+    ],
+    "cpes": [
+     "cpe:2.3:a:musl-utils:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-utils:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_utils:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_utils:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-libc:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-libc:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/musl-utils@1.2.4_git20230717-r5?arch=x86_64&distro=alpine-3.19.9&upstream=musl",
+    "upstreams": [
+     {
+      "name": "musl"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/sbin"
+      },
+      {
+       "path": "/sbin/ldconfig"
+      },
+      {
+       "path": "/usr"
+      },
+      {
+       "path": "/usr/bin"
+      },
+      {
+       "path": "/usr/bin/getconf"
+      },
+      {
+       "path": "/usr/bin/getent"
+      },
+      {
+       "path": "/usr/bin/iconv"
+      },
+      {
+       "path": "/usr/bin/ldd"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-27171",
+    "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-27171",
+    "namespace": "nvd:cpe",
+    "severity": "Medium",
+    "urls": [
+     "https://7asecurity.com/blog/2026/02/zlib-7asecurity-audit/",
+     "https://7asecurity.com/reports/pentest-report-zlib-RC1.1.pdf",
+     "https://github.com/madler/zlib/issues/904",
+     "https://github.com/madler/zlib/releases/tag/v1.3.2",
+     "https://ostif.org/zlib-audit-complete/"
+    ],
+    "description": "zlib before 1.3.2 allows CPU consumption via crc32_combine64 and crc32_combine_gen64 because x2nmodp can do right shifts within a loop that has no termination condition.",
+    "cvss": [
+     {
+      "source": "nvd@nist.gov",
+      "type": "Primary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:H",
+      "metrics": {
+       "baseScore": 5.5,
+       "exploitabilityScore": 1.9,
+       "impactScore": 3.6
+      },
+      "vendorMetadata": {}
+     },
+     {
+      "source": "cve@mitre.org",
+      "type": "Secondary",
+      "version": "3.1",
+      "vector": "CVSS:3.1/AV:L/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:L",
+      "metrics": {
+       "baseScore": 2.9,
+       "exploitabilityScore": 1.5,
+       "impactScore": 1.5
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2026-27171",
+      "epss": 0.00187,
+      "percentile": 0.07468,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2026-27171",
+      "cwe": "CWE-1284",
+      "source": "cve@mitre.org",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [],
+     "state": "unknown"
+    },
+    "advisories": [],
+    "risk": 0.08602
+   },
+   "relatedVulnerabilities": [],
+   "matchDetails": [
+    {
+     "type": "cpe-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "namespace": "nvd:cpe",
+      "cpes": [
+       "cpe:2.3:a:zlib:zlib:1.3.1:*:*:*:*:*:*:*"
+      ],
+      "package": {
+       "name": "zlib",
+       "version": "1.3.1-r0"
+      }
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-27171",
+      "versionConstraint": ">= 1.2.12, < 1.3.2 (unknown)",
+      "cpes": [
+       "cpe:2.3:a:zlib:zlib:*:*:*:*:*:*:*:*"
+      ]
+     }
+    }
+   ],
+   "artifact": {
+    "id": "28d5fc6b0a692cc6",
+    "name": "zlib",
+    "version": "1.3.1-r0",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "Zlib"
+    ],
+    "cpes": [
+     "cpe:2.3:a:zlib:zlib:1.3.1-r0:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/zlib@1.3.1-r0?arch=x86_64&distro=alpine-3.19.9",
+    "upstreams": [
+     {
+      "name": "zlib"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/lib"
+      },
+      {
+       "path": "/lib/libz.so.1"
+      },
+      {
+       "path": "/lib/libz.so.1.3.1"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-6042",
+    "dataSource": "https://security.alpinelinux.org/vuln/CVE-2026-6042",
+    "namespace": "alpine:distro:alpine:3.19",
+    "severity": "Medium",
+    "urls": [],
+    "cvss": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Secondary",
+      "version": "4.0",
+      "vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+      "metrics": {
+       "baseScore": 4.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2026-6042",
+      "epss": 0.0016,
+      "percentile": 0.04429,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2026-6042",
+      "cwe": "CWE-404",
+      "source": "cna@vuldb.com",
+      "type": "Secondary"
+     },
+     {
+      "cve": "CVE-2026-6042",
+      "cwe": "CWE-407",
+      "source": "cna@vuldb.com",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [
+      "1.2.4_git20230717-r6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.2.4_git20230717-r6",
+       "date": "2026-04-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "advisories": [],
+    "risk": 0.0784
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-6042",
+     "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-6042",
+     "namespace": "nvd:cpe",
+     "severity": "Medium",
+     "urls": [
+      "https://vuldb.com/submit/796352",
+      "https://vuldb.com/vuln/356620",
+      "https://vuldb.com/vuln/356620/cti",
+      "https://www.openwall.com/lists/oss-security/2026/04/02/10",
+      "https://www.openwall.com/lists/oss-security/2026/04/03/2",
+      "http://www.openwall.com/lists/oss-security/2026/04/09/19"
+     ],
+     "description": "A security flaw has been discovered in musl libc up to 1.2.6. Affected is the function iconv of the file src/locale/iconv.c of the component GB18030 4-byte Decoder. Performing a manipulation results in inefficient algorithmic complexity. The attack must be initiated from a local position. To fix this issue, it is recommended to deploy a patch.",
+     "cvss": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "4.0",
+       "vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+       "metrics": {
+        "baseScore": 4.8
+       },
+       "vendorMetadata": {}
+      },
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "3.1",
+       "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+       "metrics": {
+        "baseScore": 3.3,
+        "exploitabilityScore": 1.9,
+        "impactScore": 1.5
+       },
+       "vendorMetadata": {}
+      },
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "2.0",
+       "vector": "AV:L/AC:L/Au:S/C:N/I:N/A:P",
+       "metrics": {
+        "baseScore": 1.7,
+        "exploitabilityScore": 3.2,
+        "impactScore": 2.9
+       },
+       "vendorMetadata": {}
+      }
+     ],
+     "epss": [
+      {
+       "cve": "CVE-2026-6042",
+       "epss": 0.0016,
+       "percentile": 0.04429,
+       "date": "2026-09-29"
+      }
+     ],
+     "cwes": [
+      {
+       "cve": "CVE-2026-6042",
+       "cwe": "CWE-404",
+       "source": "cna@vuldb.com",
+       "type": "Secondary"
+      },
+      {
+       "cve": "CVE-2026-6042",
+       "cwe": "CWE-407",
+       "source": "cna@vuldb.com",
+       "type": "Secondary"
+      }
+     ]
+    }
+   ],
+   "matchDetails": [
+    {
+     "type": "exact-direct-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-6042",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    },
+    {
+     "type": "exact-indirect-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-6042",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    }
+   ],
+   "artifact": {
+    "id": "e1a534fe8d92bc4c",
+    "name": "musl",
+    "version": "1.2.4_git20230717-r5",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "MIT"
+    ],
+    "cpes": [
+     "cpe:2.3:a:musl-libc:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_libc:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl:1.2.4_git20230717-r5:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/musl@1.2.4_git20230717-r5?arch=x86_64&distro=alpine-3.19.9",
+    "upstreams": [
+     {
+      "name": "musl"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/lib"
+      },
+      {
+       "path": "/lib/ld-musl-x86_64.so.1"
+      },
+      {
+       "path": "/lib/libc.musl-x86_64.so.1"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  },
+  {
+   "vulnerability": {
+    "id": "CVE-2026-6042",
+    "dataSource": "https://security.alpinelinux.org/vuln/CVE-2026-6042",
+    "namespace": "alpine:distro:alpine:3.19",
+    "severity": "Medium",
+    "urls": [],
+    "cvss": [
+     {
+      "source": "cna@vuldb.com",
+      "type": "Secondary",
+      "version": "4.0",
+      "vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+      "metrics": {
+       "baseScore": 4.8
+      },
+      "vendorMetadata": {}
+     }
+    ],
+    "epss": [
+     {
+      "cve": "CVE-2026-6042",
+      "epss": 0.0016,
+      "percentile": 0.04429,
+      "date": "2026-09-29"
+     }
+    ],
+    "cwes": [
+     {
+      "cve": "CVE-2026-6042",
+      "cwe": "CWE-404",
+      "source": "cna@vuldb.com",
+      "type": "Secondary"
+     },
+     {
+      "cve": "CVE-2026-6042",
+      "cwe": "CWE-407",
+      "source": "cna@vuldb.com",
+      "type": "Secondary"
+     }
+    ],
+    "fix": {
+     "versions": [
+      "1.2.4_git20230717-r6"
+     ],
+     "state": "fixed",
+     "available": [
+      {
+       "version": "1.2.4_git20230717-r6",
+       "date": "2026-04-12",
+       "kind": "first-observed"
+      }
+     ]
+    },
+    "advisories": [],
+    "risk": 0.0784
+   },
+   "relatedVulnerabilities": [
+    {
+     "id": "CVE-2026-6042",
+     "dataSource": "https://nvd.nist.gov/vuln/detail/CVE-2026-6042",
+     "namespace": "nvd:cpe",
+     "severity": "Medium",
+     "urls": [
+      "https://vuldb.com/submit/796352",
+      "https://vuldb.com/vuln/356620",
+      "https://vuldb.com/vuln/356620/cti",
+      "https://www.openwall.com/lists/oss-security/2026/04/02/10",
+      "https://www.openwall.com/lists/oss-security/2026/04/03/2",
+      "http://www.openwall.com/lists/oss-security/2026/04/09/19"
+     ],
+     "description": "A security flaw has been discovered in musl libc up to 1.2.6. Affected is the function iconv of the file src/locale/iconv.c of the component GB18030 4-byte Decoder. Performing a manipulation results in inefficient algorithmic complexity. The attack must be initiated from a local position. To fix this issue, it is recommended to deploy a patch.",
+     "cvss": [
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "4.0",
+       "vector": "CVSS:4.0/AV:L/AC:L/AT:N/PR:L/UI:N/VC:N/VI:N/VA:L/SC:N/SI:N/SA:N/E:X/CR:X/IR:X/AR:X/MAV:X/MAC:X/MAT:X/MPR:X/MUI:X/MVC:X/MVI:X/MVA:X/MSC:X/MSI:X/MSA:X/S:X/AU:X/R:X/V:X/RE:X/U:X",
+       "metrics": {
+        "baseScore": 4.8
+       },
+       "vendorMetadata": {}
+      },
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "3.1",
+       "vector": "CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:N/I:N/A:L",
+       "metrics": {
+        "baseScore": 3.3,
+        "exploitabilityScore": 1.9,
+        "impactScore": 1.5
+       },
+       "vendorMetadata": {}
+      },
+      {
+       "source": "cna@vuldb.com",
+       "type": "Secondary",
+       "version": "2.0",
+       "vector": "AV:L/AC:L/Au:S/C:N/I:N/A:P",
+       "metrics": {
+        "baseScore": 1.7,
+        "exploitabilityScore": 3.2,
+        "impactScore": 2.9
+       },
+       "vendorMetadata": {}
+      }
+     ],
+     "epss": [
+      {
+       "cve": "CVE-2026-6042",
+       "epss": 0.0016,
+       "percentile": 0.04429,
+       "date": "2026-09-29"
+      }
+     ],
+     "cwes": [
+      {
+       "cve": "CVE-2026-6042",
+       "cwe": "CWE-404",
+       "source": "cna@vuldb.com",
+       "type": "Secondary"
+      },
+      {
+       "cve": "CVE-2026-6042",
+       "cwe": "CWE-407",
+       "source": "cna@vuldb.com",
+       "type": "Secondary"
+      }
+     ]
+    }
+   ],
+   "matchDetails": [
+    {
+     "type": "exact-indirect-match",
+     "matcher": "apk-matcher",
+     "searchedBy": {
+      "distro": {
+       "type": "alpine",
+       "version": "3.19.9"
+      },
+      "package": {
+       "name": "musl",
+       "version": "1.2.4_git20230717-r5"
+      },
+      "namespace": "alpine:distro:alpine:3.19"
+     },
+     "found": {
+      "vulnerabilityID": "CVE-2026-6042",
+      "versionConstraint": "< 1.2.4_git20230717-r6 (apk)"
+     },
+     "fix": {
+      "suggestedVersion": "1.2.4_git20230717-r6"
+     }
+    }
+   ],
+   "artifact": {
+    "id": "6edd1d8d7e97bc65",
+    "name": "musl-utils",
+    "version": "1.2.4_git20230717-r5",
+    "type": "apk",
+    "locations": [
+     {
+      "path": "/lib/apk/db/installed",
+      "layerID": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+      "accessPath": "/lib/apk/db/installed",
+      "annotations": {
+       "evidence": "primary"
+      }
+     }
+    ],
+    "language": "",
+    "licenses": [
+     "MIT AND BSD-2-Clause AND GPL-2.0-or-later"
+    ],
+    "cpes": [
+     "cpe:2.3:a:musl-utils:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-utils:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_utils:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl_utils:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-libc:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl-libc:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl-utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*",
+     "cpe:2.3:a:musl:musl_utils:1.2.4_git20230717-r5:*:*:*:*:*:*:*"
+    ],
+    "purl": "pkg:apk/alpine/musl-utils@1.2.4_git20230717-r5?arch=x86_64&distro=alpine-3.19.9&upstream=musl",
+    "upstreams": [
+     {
+      "name": "musl"
+     }
+    ],
+    "metadataType": "ApkMetadata",
+    "metadata": {
+     "files": [
+      {
+       "path": "/sbin"
+      },
+      {
+       "path": "/sbin/ldconfig"
+      },
+      {
+       "path": "/usr"
+      },
+      {
+       "path": "/usr/bin"
+      },
+      {
+       "path": "/usr/bin/getconf"
+      },
+      {
+       "path": "/usr/bin/getent"
+      },
+      {
+       "path": "/usr/bin/iconv"
+      },
+      {
+       "path": "/usr/bin/ldd"
+      }
+     ],
+     "Arch": "x86_64"
+    }
+   }
+  }
+ ],
+ "source": {
+  "type": "image",
+  "target": {
+   "userInput": "docker.io/library/alpine:3.19",
+   "imageID": "sha256:83b2b6703a620bf2e001ab57f7adc414d891787b3c59859b1b62909e48dd2242",
+   "manifestDigest": "sha256:b58899f069c47216f6002a6850143dc6fae0d35eb8b0df9300bbe6327b9c2171",
+   "mediaType": "application/vnd.oci.image.manifest.v1+json",
+   "tags": [],
+   "imageSize": 7393371,
+   "layers": [
+    {
+     "mediaType": "application/vnd.oci.image.layer.v1.tar+gzip",
+     "digest": "sha256:0b44b2151d78267ab6f2c76208c3be18688f49b2b0afd6852a9533f2cce121c5",
+     "size": 7393371
+    }
+   ],
+   "manifest": "ewogICJzY2hlbWFWZXJzaW9uIjogMiwKICAibWVkaWFUeXBlIjogImFwcGxpY2F0aW9uL3ZuZC5vY2kuaW1hZ2UubWFuaWZlc3QudjEranNvbiIsCiAgImNvbmZpZyI6IHsKICAgICJtZWRpYVR5cGUiOiAiYXBwbGljYXRpb24vdm5kLm9jaS5pbWFnZS5jb25maWcudjEranNvbiIsCiAgICAiZGlnZXN0IjogInNoYTI1Njo4M2IyYjY3MDNhNjIwYmYyZTAwMWFiNTdmN2FkYzQxNGQ4OTE3ODdiM2M1OTg1OWIxYjYyOTA5ZTQ4ZGQyMjQyIiwKICAgICJzaXplIjogNTgxCiAgfSwKICAibGF5ZXJzIjogWwogICAgewogICAgICAibWVkaWFUeXBlIjogImFwcGxpY2F0aW9uL3ZuZC5vY2kuaW1hZ2UubGF5ZXIudjEudGFyK2d6aXAiLAogICAgICAiZGlnZXN0IjogInNoYTI1NjoxN2EzOWMwYmE5NzhjYzI3MDAxZTljNTZhNDgwZjk4MTA2ZTFhYjc0YmQ1NmViMzAyZjlmZDRjZjc1OGVhNDNmIiwKICAgICAgInNpemUiOiAzNDE5ODE1CiAgICB9CiAgXSwKICAiYW5ub3RhdGlvbnMiOiB7CiAgICAiY29tLmRvY2tlci5vZmZpY2lhbC1pbWFnZXMuYmFzaGJyZXcuYXJjaCI6ICJhbWQ2NCIsCiAgICAib3JnLm9wZW5jb250YWluZXJzLmltYWdlLmJhc2UubmFtZSI6ICJzY3JhdGNoIiwKICAgICJvcmcub3BlbmNvbnRhaW5lcnMuaW1hZ2UuY3JlYXRlZCI6ICIyMDI1LTEwLTA4VDExOjEwOjQwWiIsCiAgICAib3JnLm9wZW5jb250YWluZXJzLmltYWdlLnJldmlzaW9uIjogImVlOTM5ZDUyMzQ1MjQ4NDIwY2Y2MmQ0NjA2Y2NjNzE1MmJjNWExMDciLAogICAgIm9yZy5vcGVuY29udGFpbmVycy5pbWFnZS5zb3VyY2UiOiAiaHR0cHM6Ly9naXRodWIuY29tL2FscGluZWxpbnV4L2RvY2tlci1hbHBpbmUuZ2l0I2VlOTM5ZDUyMzQ1MjQ4NDIwY2Y2MmQ0NjA2Y2NjNzE1MmJjNWExMDc6eDg2XzY0IiwKICAgICJvcmcub3BlbmNvbnRhaW5lcnMuaW1hZ2UudXJsIjogImh0dHBzOi8vaHViLmRvY2tlci5jb20vXy9hbHBpbmUiLAogICAgIm9yZy5vcGVuY29udGFpbmVycy5pbWFnZS52ZXJzaW9uIjogIjMuMTkuOSIKICB9Cn0=",
+   "config": "eyJhcmNoaXRlY3R1cmUiOiJhbWQ2NCIsImNvbmZpZyI6eyJFbnYiOlsiUEFUSD0vdXNyL2xvY2FsL3NiaW46L3Vzci9sb2NhbC9iaW46L3Vzci9zYmluOi91c3IvYmluOi9zYmluOi9iaW4iXSwiQ21kIjpbIi9iaW4vc2giXSwiV29ya2luZ0RpciI6Ii8ifSwiY3JlYXRlZCI6IjIwMjUtMTAtMDhUMTE6MTA6NDBaIiwiaGlzdG9yeSI6W3siY3JlYXRlZCI6IjIwMjUtMTAtMDhUMTE6MTA6NDBaIiwiY3JlYXRlZF9ieSI6IkFERCBhbHBpbmUtbWluaXJvb3Rmcy0zLjE5LjkteDg2XzY0LnRhci5neiAvICMgYnVpbGRraXQiLCJjb21tZW50IjoiYnVpbGRraXQuZG9ja2VyZmlsZS52MCJ9LHsiY3JlYXRlZCI6IjIwMjUtMTAtMDhUMTE6MTA6NDBaIiwiY3JlYXRlZF9ieSI6IkNNRCBbXCIvYmluL3NoXCJdIiwiY29tbWVudCI6ImJ1aWxka2l0LmRvY2tlcmZpbGUudjAiLCJlbXB0eV9sYXllciI6dHJ1ZX1dLCJvcyI6ImxpbnV4Iiwicm9vdGZzIjp7InR5cGUiOiJsYXllcnMiLCJkaWZmX2lkcyI6WyJzaGEyNTY6MGI0NGIyMTUxZDc4MjY3YWI2ZjJjNzYyMDhjM2JlMTg2ODhmNDliMmIwYWZkNjg1MmE5NTMzZjJjY2UxMjFjNSJdfX0=",
+   "repoDigests": [
+    "index.docker.io/library/alpine@sha256:6baf43584bcb78f2e5847d1de515f23499913ac9f12bdf834811a3145eb11ca1"
+   ],
+   "architecture": "amd64",
+   "os": "linux"
+  }
+ },
+ "distro": {
+  "name": "alpine",
+  "version": "3.19.9",
+  "idLike": []
+ },
+ "descriptor": {
+  "name": "grype",
+  "version": "0.119.0",
+  "configuration": {
+   "output": [
+    "json"
+   ],
+   "file": "",
+   "pretty": false,
+   "distro": "",
+   "add-cpes-if-none": false,
+   "output-template-file": "",
+   "check-for-app-update": false,
+   "only-fixed": false,
+   "only-notfixed": false,
+   "ignore-wontfix": "",
+   "platform": "linux/amd64",
+   "search": {
+    "scope": "squashed",
+    "unindexed-archives": false,
+    "indexed-archives": true
+   },
+   "ignore": [
+    {
+     "vulnerability": "",
+     "include-aliases": false,
+     "reason": "",
+     "namespace": "",
+     "fix-state": "",
+     "package": {
+      "name": "kernel-headers",
+      "version": "",
+      "language": "",
+      "type": "rpm",
+      "location": "",
+      "upstream-name": "kernel"
+     },
+     "vex-status": "",
+     "vex-justification": "",
+     "match-type": "exact-indirect-match"
+    },
+    {
+     "vulnerability": "",
+     "include-aliases": false,
+     "reason": "",
+     "namespace": "",
+     "fix-state": "",
+     "package": {
+      "name": "linux(-.*)?-headers-.*",
+      "version": "",
+      "language": "",
+      "type": "deb",
+      "location": "",
+      "upstream-name": "linux.*"
+     },
+     "vex-status": "",
+     "vex-justification": "",
+     "match-type": "exact-indirect-match"
+    },
+    {
+     "vulnerability": "",
+     "include-aliases": false,
+     "reason": "",
+     "namespace": "",
+     "fix-state": "",
+     "package": {
+      "name": "linux-libc-dev",
+      "version": "",
+      "language": "",
+      "type": "deb",
+      "location": "",
+      "upstream-name": "linux"
+     },
+     "vex-status": "",
+     "vex-justification": "",
+     "match-type": "exact-indirect-match"
+    },
+    {
+     "vulnerability": "",
+     "include-aliases": false,
+     "reason": "",
+     "namespace": "",
+     "fix-state": "",
+     "package": {
+      "name": "linux-kbuild-.*",
+      "version": "",
+      "language": "",
+      "type": "deb",
+      "location": "",
+      "upstream-name": "linux.*"
+     },
+     "vex-status": "",
+     "vex-justification": "",
+     "match-type": "exact-indirect-match"
+    }
+   ],
+   "exclude": [],
+   "externalSources": {
+    "enable": false,
+    "maven": {
+     "searchUpstreamBySha1": true,
+     "baseUrl": "https://search.maven.org/solrsearch/select",
+     "rateLimit": 300000000
+    }
+   },
+   "match": {
+    "java": {
+     "using-cpes": false
+    },
+    "jvm": {
+     "using-cpes": true
+    },
+    "dotnet": {
+     "using-cpes": false
+    },
+    "golang": {
+     "using-cpes": false,
+     "always-use-cpe-for-stdlib": false,
+     "allow-main-module-pseudo-version-comparison": false
+    },
+    "javascript": {
+     "using-cpes": false
+    },
+    "python": {
+     "using-cpes": false
+    },
+    "ruby": {
+     "using-cpes": false
+    },
+    "rust": {
+     "using-cpes": false
+    },
+    "hex": {
+     "using-cpes": false
+    },
+    "stock": {
+     "using-cpes": true
+    },
+    "dpkg": {
+     "using-cpes": false,
+     "missing-epoch-strategy": "zero",
+     "use-cpes-for-eol": false
+    },
+    "rpm": {
+     "using-cpes": false,
+     "missing-epoch-strategy": "auto",
+     "use-cpes-for-eol": false
+    }
+   },
+   "fail-on-severity": "",
+   "registry": {
+    "insecure-skip-tls-verify": false,
+    "insecure-use-http": false,
+    "ca-cert": ""
+   },
+   "show-suppressed": false,
+   "include-matcher-suppressions": false,
+   "by-cve": false,
+   "SortBy": {
+    "sort-by": "risk"
+   },
+   "name": "",
+   "default-image-pull-source": "",
+   "from": null,
+   "vex-documents": [],
+   "vex-add": [],
+   "match-upstream-kernel-headers": false,
+   "fix-channel": {
+    "redhat-eus": {
+     "apply": "auto",
+     "versions": ">= 8.0"
+    },
+    "ubuntu-esm": {
+     "apply": "auto",
+     "versions": ""
+    }
+   },
+   "timestamp": true,
+   "alerts": {
+    "enable-eol-distro-warnings": true
+   },
+   "db": {
+    "cache-dir": "/c/grype",
+    "update-url": "https://grype.anchore.io/databases",
+    "ca-cert": "",
+    "auto-update": false,
+    "validate-by-hash-on-start": true,
+    "validate-age": true,
+    "max-allowed-built-age": 432000000000000,
+    "require-update-check": false,
+    "update-available-timeout": 30000000000,
+    "update-download-timeout": 300000000000,
+    "max-update-check-frequency": 7200000000000
+   },
+   "exp": {},
+   "dev": {
+    "db": {
+     "debug": false
+    }
+   }
+  },
+  "db": {
+   "status": {
+    "schemaVersion": "v6.1.9",
+    "from": "https://grype.anchore.io/databases/v6/vulnerability-db_v6.1.9_2026-09-30T00:35:37Z_1790749967.tar.zst?checksum=sha256%3Aac0db74474a11c2850db2376e4838c1bc5444097d21b277ad9dec767b6d39869",
+    "built": "2026-09-30T06:32:47Z",
+    "path": "/c/grype/6/vulnerability.db",
+    "valid": true
+   },
+   "providers": {
+    "alma": {
+     "captured": "2026-09-30T00:35:44Z",
+     "input": "xxh64:0466d3ec59fa4427"
+    },
+    "alpine": {
+     "captured": "2026-09-30T00:36:08Z",
+     "input": "xxh64:a958708635c66176"
+    },
+    "amazon": {
+     "captured": "2026-09-30T00:35:41Z",
+     "input": "xxh64:4aa0321875a051dd"
+    },
+    "arch": {
+     "captured": "2026-09-30T00:35:49Z",
+     "input": "xxh64:1628aed84a2c33e5"
+    },
+    "bitnami": {
+     "captured": "2026-09-30T00:36:04Z",
+     "input": "xxh64:aaec35e29fc22c6f"
+    },
+    "chainguard": {
+     "captured": "2026-09-30T00:35:37Z",
+     "input": "xxh64:5775a182479efd8d"
+    },
+    "chainguard-libraries": {
+     "captured": "2026-09-30T00:35:58Z",
+     "input": "xxh64:b1101e386da6a6ee"
+    },
+    "debian": {
+     "captured": "2026-09-30T00:36:23Z",
+     "input": "xxh64:ed1bbb0a99eaea62"
+    },
+    "echo": {
+     "captured": "2026-09-30T00:35:50Z",
+     "input": "xxh64:6303c3b88cadf45e"
+    },
+    "eol": {
+     "captured": "2026-09-30T00:35:43Z",
+     "input": "xxh64:aa16464268fee3a0"
+    },
+    "epss": {
+     "captured": "2026-09-30T00:36:02Z",
+     "input": "xxh64:bab1979e5f1f2a20"
+    },
+    "fedora": {
+     "captured": "2026-09-30T00:35:46Z",
+     "input": "xxh64:97fd16c233f0ee03"
+    },
+    "github": {
+     "captured": "2026-09-30T00:36:23Z",
+     "input": "xxh64:41ecf967f5e6cf98"
+    },
+    "govulndb": {
+     "captured": "2026-09-30T00:36:26Z",
+     "input": "xxh64:d571630b41cfafd5"
+    },
+    "hummingbird": {
+     "captured": "2026-09-30T00:38:21Z",
+     "input": "xxh64:78e8a0d2c307535c"
+    },
+    "kev": {
+     "captured": "2026-09-30T00:35:56Z",
+     "input": "xxh64:f39ceed9164cf1b3"
+    },
+    "mariner": {
+     "captured": "2026-09-30T00:35:37Z",
+     "input": "xxh64:90f580c3b8fd8be0"
+    },
+    "minimos": {
+     "captured": "2026-09-30T00:35:57Z",
+     "input": "xxh64:4963a572bb6465ad"
+    },
+    "nvd": {
+     "captured": "2026-09-30T00:36:41Z",
+     "input": "xxh64:7354a4da9354a22b"
+    },
+    "oracle": {
+     "captured": "2026-09-30T00:35:39Z",
+     "input": "xxh64:7256c49ec857cd62"
+    },
+    "photon": {
+     "captured": "2026-09-30T00:35:39Z",
+     "input": "xxh64:ce1ef1151294f5ac"
+    },
+    "rhel": {
+     "captured": "2026-09-30T01:19:56Z",
+     "input": "xxh64:410c369c6c520ebc"
+    },
+    "secureos": {
+     "captured": "2026-09-30T00:35:37Z",
+     "input": "xxh64:6c05ee0a9ab85cfd"
+    },
+    "sles": {
+     "captured": "2026-09-30T01:20:32Z",
+     "input": "xxh64:b87ca072a646d5b6"
+    },
+    "ubuntu": {
+     "captured": "2026-09-30T00:36:36Z",
+     "input": "xxh64:98b99728e4aad191"
+    },
+    "wolfi": {
+     "captured": "2026-09-30T00:35:58Z",
+     "input": "xxh64:e260bb2461b65cfa"
+    }
+   }
+  },
+  "timestamp": "2026-09-30T13:18:41.166945181Z"
+ }
+}

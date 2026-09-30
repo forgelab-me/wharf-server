@@ -40,6 +40,7 @@ type containerReport struct {
 	ServiceName string   `json:"service_name"`
 	Mounts      []string `json:"mounts,omitempty"`
 	Networks    []string `json:"networks,omitempty"`
+	ImageID     string   `json:"image_id,omitempty"`
 }
 
 type imageReport struct {
@@ -47,6 +48,7 @@ type imageReport struct {
 	Repository string `json:"repository"`
 	Tag        string `json:"tag"`
 	Size       string `json:"size"`
+	Digest     string `json:"digest,omitempty"`
 }
 
 type volumeReport struct {
@@ -70,6 +72,7 @@ type tunnelMessage struct {
 	Images     []imageReport     `json:"images,omitempty"`
 	Volumes    []volumeReport    `json:"volumes,omitempty"`
 	Networks   []networkReport   `json:"networks,omitempty"`
+	Arch       string            `json:"arch,omitempty"`    // "state" only -- the host's CPU architecture, cf. store.SetHostArch
 	Version    string            `json:"version,omitempty"` // "state" only -- the reporting agent's own build, cf. versioncheck.go
 
 	// "command" (controller -> agent)
@@ -285,6 +288,7 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 					ServiceName: c.ServiceName,
 					Mounts:      strings.Join(c.Mounts, ","),
 					Networks:    strings.Join(c.Networks, ","),
+					ImageID:     c.ImageID,
 				})
 			}
 			if err := a.store.ReplaceHostContainers(host.ID, containers); err != nil {
@@ -299,6 +303,7 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 					Repository: img.Repository,
 					Tag:        img.Tag,
 					Size:       img.Size,
+					Digest:     img.Digest,
 				})
 			}
 			if err := a.store.ReplaceHostImages(host.ID, images); err != nil {
@@ -333,6 +338,11 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 			if msg.Version != "" {
 				if err := a.store.SetHostAgentVersion(host.ID, msg.Version); err != nil {
 					log.Println("tunnel: set agent version for", host.ID, "failed:", err)
+				}
+			}
+			if msg.Arch != "" {
+				if err := a.store.SetHostArch(host.ID, msg.Arch); err != nil {
+					log.Println("tunnel: set host arch for", host.ID, "failed:", err)
 				}
 			}
 		default:

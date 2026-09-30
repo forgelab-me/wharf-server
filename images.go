@@ -16,6 +16,7 @@ import (
 
 type DockerImage struct {
 	Repo, Tag, ID, HostID, Host, Size, UsedBy string
+	Scan                                      *scanBadge
 }
 
 // familiarImageRef strips the "docker.io/library/" (an official image)
@@ -103,6 +104,7 @@ func (a *app) imagesHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	scans := a.newScanIndex()
 	images := make([]DockerImage, 0, len(imageRows))
 	for _, img := range imageRows {
 		ref := familiarImageRef(img.Repository + ":" + img.Tag)
@@ -123,14 +125,16 @@ func (a *app) imagesHandler(w http.ResponseWriter, r *http.Request) {
 			Host:   img.HostName,
 			Size:   img.Size,
 			UsedBy: usedBy,
+			Scan:   scans.forImage(img.HostID, img.ImageID),
 		})
 	}
 
 	data := map[string]any{
-		"Title":  "Images",
-		"Nav":    "images",
-		"Images": images,
-		"Hosts":  hosts,
+		"Title":       "Images",
+		"Nav":         "images",
+		"Images":      images,
+		"Hosts":       hosts,
+		"ScanEnabled": scans != nil,
 	}
 	render(w, r, "layout", "images.html", data)
 }

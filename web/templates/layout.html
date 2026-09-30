@@ -29,6 +29,7 @@
         <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
         <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
         <a href="/settings/secret-providers" class="{{if eq .Nav "secret-providers"}}active{{end}}">Secret providers</a>
+        <a href="/settings/vulnerability-scanning" class="{{if eq .Nav "vuln-scanning"}}active{{end}}">Vulnerability scanning</a>
         <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
         <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
         <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
@@ -582,3 +583,5 @@
   {{if .Help}}<p class="muted" style="font-size:12px;">{{.Help}}</p>{{end}}
 </div>
 {{end}}
+
+{{define "scanbadge"}}{{if .}}{{if .Link}}<a href="{{.Link}}" class="badge scan-{{.Level}}" title="{{.Tooltip}}">{{.Label}}</a>{{else}}<span class="badge scan-{{.Level}}" title="{{.Tooltip}}">{{.Label}}</span>{{end}}{{end}}{{end}}

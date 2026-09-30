@@ -1,0 +1,54 @@
+{{define "content"}}
+<section class="panel">
+  <h2>{{.Scan.Repository}} {{template "scanbadge" .Badge}}</h2>
+  <table class="kv-table">
+    <tr><th>Digest</th><td><code>{{.Scan.Digest}}</code></td></tr>
+    <tr><th>Platform</th><td>{{.Scan.Platform}}</td></tr>
+    <tr><th>Scanner</th><td>{{.Scanner}}</td></tr>
+    <tr><th>Scanned</th><td>{{.Scan.ScannedAt}}{{if .Scan.DBBuiltAt}} <span class="muted">· database built {{.Scan.DBBuiltAt}}</span>{{end}}</td></tr>
+    <tr>
+      <th>Found</th>
+      <td>
+        {{.Scan.Critical}} critical ({{.Scan.FixableCritical}} fixable) · {{.Scan.High}} high ({{.Scan.FixableHigh}} fixable) · {{.Scan.Medium}} medium · {{.Scan.Low}} low{{if .Scan.Unknown}} · {{.Scan.Unknown}} unknown{{end}}
+      </td>
+    </tr>
+  </table>
+  {{if .Scan.Notice}}<p class="banner-error" style="margin-top:10px;">{{.Scan.Notice}}</p>{{end}}
+  <p class="muted" style="font-size:12px; margin-top:10px;">Counts are per distinct vulnerability: one that affects several packages of the same source counts once. Scanners do not agree on every image, so compare results from the same one.</p>
+</section>
+
+<section class="panel">
+  <h2>Findings</h2>
+  <form method="get" class="inline-form" style="margin-bottom:12px; gap:12px;">
+    <input type="hidden" name="platform" value="{{.Scan.Platform}}">
+    <label class="radio"><input type="checkbox" name="fixable" value="1" {{if .OnlyFixable}}checked{{end}} onchange="this.form.submit()"> Fixable only</label>
+    <select name="severity" onchange="this.form.submit()">
+      <option value="">All severities</option>
+      <option value="critical" {{if eq .Severity "critical"}}selected{{end}}>Critical</option>
+      <option value="high" {{if eq .Severity "high"}}selected{{end}}>High</option>
+      <option value="medium" {{if eq .Severity "medium"}}selected{{end}}>Medium</option>
+      <option value="low" {{if eq .Severity "low"}}selected{{end}}>Low</option>
+      <option value="unknown" {{if eq .Severity "unknown"}}selected{{end}}>Unknown</option>
+    </select>
+  </form>
+  {{if .Findings}}
+  <table>
+    <thead><tr><th>Vulnerability</th><th>Severity</th><th>Package</th><th>Installed</th><th>Fixed in</th></tr></thead>
+    <tbody>
+      {{range .Findings}}
+      <tr>
+        <td>{{if .URL}}<a href="{{.URL}}" target="_blank" rel="noopener noreferrer">{{.ID}}</a>{{else}}{{.ID}}{{end}}{{if .Title}}<div class="muted" style="font-size:12px;">{{.Title}}</div>{{end}}</td>
+        <td><span class="badge scan-{{if eq .Severity "critical"}}critical{{else if eq .Severity "high"}}high{{else if eq .Severity "medium"}}medium{{else}}none{{end}}">{{.Severity}}</span></td>
+        <td>{{.Package}}</td>
+        <td class="muted"><code>{{.Installed}}</code></td>
+        <td>{{if .FixedIn}}<code>{{.FixedIn}}</code>{{else}}<span class="muted">no fix yet</span>{{end}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">{{if .Total}}No finding matches this filter.{{else}}Nothing was found.{{end}}</p>
+  {{end}}
+  {{if .Truncated}}<p class="muted" style="font-size:12px;">Only the {{.Total}} most severe findings are kept; the counts above cover all of them.</p>{{end}}
+</section>
+{{end}}

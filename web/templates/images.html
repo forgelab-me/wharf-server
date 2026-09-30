@@ -27,7 +27,7 @@
     <thead>
       <tr>
         {{if eq .Role "admin"}}<th><input type="checkbox" class="select-all"></th>{{end}}
-        <th>Repository</th><th>Tag</th><th>ID</th><th>Host</th><th>Size</th><th>Used by</th>
+        <th>Repository</th><th>Tag</th><th>ID</th><th>Host</th><th>Size</th><th>Used by</th>{{if .ScanEnabled}}<th>Vulnerabilities</th>{{end}}
       </tr>
     </thead>
     <tbody>
@@ -40,6 +40,7 @@
         <td>{{.Host}}</td>
         <td class="muted">{{.Size}}</td>
         <td>{{if .UsedBy}}{{.UsedBy}}{{else}}<span class="badge state-exited">unused</span>{{end}}</td>
+        {{if $.ScanEnabled}}<td>{{template "scanbadge" .Scan}}</td>{{end}}
       </tr>
       {{end}}
     </tbody>

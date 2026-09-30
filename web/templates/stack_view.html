@@ -201,8 +201,8 @@
             </select>
           </form>
         </td>
-        <td class="muted"><code>{{if .AppliedShort}}{{.AppliedShort}}{{else}}—{{end}}</code></td>
-        <td class="muted"><code>{{if .LatestShort}}{{.LatestShort}}{{else}}—{{end}}</code></td>
+        <td class="muted"><code>{{if .AppliedShort}}{{.AppliedShort}}{{else}}—{{end}}</code>{{if .AppliedScan}}<div>{{template "scanbadge" .AppliedScan}}</div>{{end}}</td>
+        <td class="muted"><code>{{if .LatestShort}}{{.LatestShort}}{{else}}—{{end}}</code>{{if .LatestScan}}<div>{{template "scanbadge" .LatestScan}}</div>{{end}}</td>
         <td>
           {{if .UpdateAvailable}}
           <span class="badge status-pending">Update available</span>
