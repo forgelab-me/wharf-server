@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.15.2] - 2026-09-30
+
+### Fixed
+- With several hosts connected, a host's state (containers, images, volumes, networks) could fail to be stored with `database is locked`, and stayed stale until its next push. Each agent resent its whole state every 45 seconds and on every Docker event, and every push rewrote every table even when nothing had changed, so the hosts queued for SQLite's single writer for nothing. Now only a table that actually changed is written, and a write that finds the database busy is retried a few times before giving up.
+
 ## [0.15.1] - 2026-09-30
 
 ### Changed

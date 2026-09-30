@@ -15,6 +15,9 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -257,6 +260,7 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 	defer a.tunnels.remove(host.ID, tc)
 
 	ctx := r.Context()
+	cache := stateCache{}
 	for {
 		var msg tunnelMessage
 		if err := wsjson.Read(ctx, conn, &msg); err != nil {
@@ -273,80 +277,132 @@ func (a *app) tunnelHandler(w http.ResponseWriter, r *http.Request) {
 				reply <- msg
 			}
 		case "state":
-			containers := make([]store.HostContainer, 0, len(msg.Containers))
-			for _, c := range msg.Containers {
-				containers = append(containers, store.HostContainer{
-					HostID:      host.ID,
-					ContainerID: c.ID,
-					Name:        c.Name,
-					Image:       c.Image,
-					State:       c.State,
-					Status:      c.Status,
-					Ports:       c.Ports,
-					Created:     c.Created,
-					StackID:     c.StackID,
-					ServiceName: c.ServiceName,
-					Mounts:      strings.Join(c.Mounts, ","),
-					Networks:    strings.Join(c.Networks, ","),
-					ImageID:     c.ImageID,
-				})
-			}
-			if err := a.store.ReplaceHostContainers(host.ID, containers); err != nil {
-				log.Println("tunnel: replace host containers for", host.ID, "failed:", err)
-			}
-
-			images := make([]store.HostImage, 0, len(msg.Images))
-			for _, img := range msg.Images {
-				images = append(images, store.HostImage{
-					HostID:     host.ID,
-					ImageID:    img.ID,
-					Repository: img.Repository,
-					Tag:        img.Tag,
-					Size:       img.Size,
-					Digest:     img.Digest,
-				})
-			}
-			if err := a.store.ReplaceHostImages(host.ID, images); err != nil {
-				log.Println("tunnel: replace host images for", host.ID, "failed:", err)
-			}
-
-			volumes := make([]store.HostVolume, 0, len(msg.Volumes))
-			for _, v := range msg.Volumes {
-				volumes = append(volumes, store.HostVolume{
-					HostID: host.ID,
-					Name:   v.Name,
-					Driver: v.Driver,
-				})
-			}
-			if err := a.store.ReplaceHostVolumes(host.ID, volumes); err != nil {
-				log.Println("tunnel: replace host volumes for", host.ID, "failed:", err)
-			}
-
-			networks := make([]store.HostNetwork, 0, len(msg.Networks))
-			for _, n := range msg.Networks {
-				networks = append(networks, store.HostNetwork{
-					HostID: host.ID,
-					Name:   n.Name,
-					Driver: n.Driver,
-					Scope:  n.Scope,
-				})
-			}
-			if err := a.store.ReplaceHostNetworks(host.ID, networks); err != nil {
-				log.Println("tunnel: replace host networks for", host.ID, "failed:", err)
-			}
-
-			if msg.Version != "" {
-				if err := a.store.SetHostAgentVersion(host.ID, msg.Version); err != nil {
-					log.Println("tunnel: set agent version for", host.ID, "failed:", err)
-				}
-			}
-			if msg.Arch != "" {
-				if err := a.store.SetHostArch(host.ID, msg.Arch); err != nil {
-					log.Println("tunnel: set host arch for", host.ID, "failed:", err)
-				}
-			}
+			a.applyState(host.ID, msg, cache)
 		default:
 			log.Println("tunnel: unknown message type", msg.Type, "from host", host.ID)
 		}
 	}
+}
+
+// stateCache remembers, for one tunnel connection, a hash of what was last
+// written to the database per table. An agent resends its whole state every
+// 45 seconds and on every Docker event, and on a quiet host almost every
+// push is identical: rewriting it each time made several hosts queue for
+// SQLite's single writer for nothing.
+type stateCache map[string]string
+
+// unchanged reports whether table's content is what was last written, and
+// returns the hash to remember once the write has succeeded.
+func (c stateCache) unchanged(table string, rows any) (hash string, same bool) {
+	raw, err := json.Marshal(rows)
+	if err != nil {
+		return "", false
+	}
+	sum := sha256.Sum256(raw)
+	hash = hex.EncodeToString(sum[:])
+	return hash, c[table] == hash
+}
+
+// applyState stores one "state" push. A table is only rewritten when it
+// changed, a write that hits a busy database is retried, and a table whose
+// write failed is not remembered, so the next push tries it again.
+func (a *app) applyState(hostID string, msg tunnelMessage, cache stateCache) {
+	containers := make([]store.HostContainer, 0, len(msg.Containers))
+	for _, c := range msg.Containers {
+		containers = append(containers, store.HostContainer{
+			HostID:      hostID,
+			ContainerID: c.ID,
+			Name:        c.Name,
+			Image:       c.Image,
+			State:       c.State,
+			Status:      c.Status,
+			Ports:       c.Ports,
+			Created:     c.Created,
+			StackID:     c.StackID,
+			ServiceName: c.ServiceName,
+			Mounts:      strings.Join(c.Mounts, ","),
+			Networks:    strings.Join(c.Networks, ","),
+			ImageID:     c.ImageID,
+		})
+	}
+	images := make([]store.HostImage, 0, len(msg.Images))
+	for _, img := range msg.Images {
+		images = append(images, store.HostImage{
+			HostID:     hostID,
+			ImageID:    img.ID,
+			Repository: img.Repository,
+			Tag:        img.Tag,
+			Size:       img.Size,
+			Digest:     img.Digest,
+		})
+	}
+	volumes := make([]store.HostVolume, 0, len(msg.Volumes))
+	for _, v := range msg.Volumes {
+		volumes = append(volumes, store.HostVolume{HostID: hostID, Name: v.Name, Driver: v.Driver})
+	}
+	networks := make([]store.HostNetwork, 0, len(msg.Networks))
+	for _, n := range msg.Networks {
+		networks = append(networks, store.HostNetwork{HostID: hostID, Name: n.Name, Driver: n.Driver, Scope: n.Scope})
+	}
+
+	replace := func(table string, rows any, write func() error) {
+		hash, same := cache.unchanged(table, rows)
+		if same {
+			return
+		}
+		if err := retryOnBusy(write); err != nil {
+			log.Println("tunnel: replace host", table, "for", hostID, "failed:", err)
+			delete(cache, table)
+			return
+		}
+		cache[table] = hash
+	}
+	replace("containers", containers, func() error { return a.store.ReplaceHostContainers(hostID, containers) })
+	replace("images", images, func() error { return a.store.ReplaceHostImages(hostID, images) })
+	replace("volumes", volumes, func() error { return a.store.ReplaceHostVolumes(hostID, volumes) })
+	replace("networks", networks, func() error { return a.store.ReplaceHostNetworks(hostID, networks) })
+
+	// version and architecture change a few times in a host's life, not per push
+	facts := msg.Version + "|" + msg.Arch
+	if cache["facts"] == facts {
+		return
+	}
+	ok := true
+	if msg.Version != "" {
+		if err := retryOnBusy(func() error { return a.store.SetHostAgentVersion(hostID, msg.Version) }); err != nil {
+			log.Println("tunnel: set agent version for", hostID, "failed:", err)
+			ok = false
+		}
+	}
+	if msg.Arch != "" {
+		if err := retryOnBusy(func() error { return a.store.SetHostArch(hostID, msg.Arch) }); err != nil {
+			log.Println("tunnel: set host arch for", hostID, "failed:", err)
+			ok = false
+		}
+	}
+	if ok {
+		cache["facts"] = facts
+	}
+}
+
+// retryOnBusy runs write, trying again a few times when SQLite reports the
+// database as busy: another writer held the lock for longer than the busy
+// timeout, which passes once it commits. Any other error returns at once.
+func retryOnBusy(write func() error) error {
+	var err error
+	for attempt := 0; attempt < 4; attempt++ {
+		if err = write(); err == nil || !isBusy(err) {
+			return err
+		}
+		busyBackoff(attempt)
+	}
+	return err
+}
+
+// busyBackoff waits before a retry; a variable so tests need not sit through it.
+var busyBackoff = func(attempt int) { time.Sleep(time.Duration(attempt+1) * 250 * time.Millisecond) }
+
+func isBusy(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "SQLITE_BUSY") || strings.Contains(msg, "database is locked")
 }
