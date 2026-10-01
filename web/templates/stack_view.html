@@ -56,6 +56,13 @@
 </section>
 {{end}}
 
+{{if .Graph}}
+<section class="panel">
+  <h2>Topology</h2>
+  {{template "graph" .Graph}}
+</section>
+{{end}}
+
 {{if eq .Stack.SourceType "local"}}
 <section class="panel">
   <h2>Compose file <a href="/stacks/{{.Stack.ID}}/edit" class="btn btn-ghost btn-sm" style="margin-left:8px;">Edit</a></h2>

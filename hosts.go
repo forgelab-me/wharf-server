@@ -106,6 +106,9 @@ func (a *app) hostViewHandler(w http.ResponseWriter, r *http.Request) {
 		"Connected":          connected,
 		"LatestAgentVersion": latestAgent,
 	}
+	if t := a.hostTopology(h); t != nil {
+		data["Topology"] = t
+	}
 	render(w, r, "layout", "host_view.html", data)
 }
 

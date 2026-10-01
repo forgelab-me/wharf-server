@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.16.0] - 2026-10-01
+
+### Added
+- A **Topology** panel on the stack page and on the host page draws the containers, volumes and networks as a graph. On a stack: its sources (Git repository, secret providers, local secrets, image policies), the stack, its containers with their image and worst vulnerability, and the volumes and network they use. On a host: its containers grouped by stack, one table each with the image, the worst vulnerability, the networks (colored, with a legend saying which stacks each one links) and the volumes of every container, and what Wharf does not manage in a group of its own. It uses what agents already report, so no agent update is needed. Only Docker volumes appear: a bind mount is not drawn.
+
 ## [0.15.4] - 2026-09-30
 
 ### Security

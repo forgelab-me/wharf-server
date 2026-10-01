@@ -15,9 +15,14 @@ A stack lives in Git (deployed with a dedicated deploy key or a shared connectio
 ![New stack form](screenshots/stack-form.png)
 
 ### Stack
-Its containers, the last deployment's output, and Deploy / Undeploy.
+Its containers, a topology graph of what feeds them and what they use, the last deployment's output, and Deploy / Undeploy.
 
 ![Stack page](screenshots/stack-view.png)
+
+### Stack topology
+The stack's sources, containers (with their worst vulnerability), volumes and networks, drawn left to right.
+
+![Stack topology](screenshots/topology-stack.png)
 
 ### Image update policies
 Each service's image is tracked against its registry: pinned, auto-redeploy, or propose.
@@ -30,9 +35,14 @@ An agent shows up as pending until you approve it; its certificate fingerprint i
 ![Hosts](screenshots/hosts.png)
 
 ### Host
-Live CPU, memory and I/O across the host's containers, and Docker's disk footprint.
+A topology of the host's containers, live CPU, memory and I/O across them, and Docker's disk footprint.
 
 ![Host details](screenshots/host-detail.png)
+
+### Host topology
+Containers grouped by stack, each with its image, vulnerabilities, networks and volumes; a legend says which stacks a network links.
+
+![Host topology](screenshots/topology-host.png)
 
 ## Docker resources
 

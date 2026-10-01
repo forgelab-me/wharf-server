@@ -584,4 +584,68 @@
 </div>
 {{end}}
 
+{{define "graph"}}
+<svg class="graph" viewBox="0 0 {{.W}} {{.H}}" role="img" aria-label="Topology graph">
+  <defs><marker id="garrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M1 1L7 4L1 7" fill="none" stroke="currentColor" stroke-width="1.2"/></marker></defs>
+  {{range .Regions}}
+  <g class="gregion">
+    <rect class="gregion-box" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="10"/>
+    {{if .Href}}<a href="{{.Href}}"><text class="gsub glabel" x="{{.LX}}" y="{{.LY}}">{{.Label}}</text></a>{{else}}<text class="gsub" x="{{.LX}}" y="{{.LY}}">{{.Label}}</text>{{end}}
+  </g>
+  {{end}}
+  {{range .Headers}}<text class="{{.Class}}" x="{{.X}}" y="{{.Y}}">{{.Text}}</text>{{end}}
+  {{range .Edges}}<path class="gedge gedge-{{.Kind}}" d="{{.D}}"/>{{end}}
+  {{range .Nodes}}
+  <g class="gnode gnode-{{.Kind}}{{if .Class}} {{.Class}}{{end}}">
+    {{if .Href}}<a href="{{.Href}}">{{end}}
+    <title>{{.Tip}}</title>
+    <rect class="gbox" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="8"/>
+    {{if .Dot}}<circle class="gdot gdot-{{.Dot}}" cx="{{.DX}}" cy="{{.DY}}" r="4"/>{{end}}
+    {{range .Lines}}<text class="{{.Class}}" x="{{.X}}" y="{{.Y}}">{{.Text}}</text>{{end}}
+    {{with .Chip}}<g><title>{{.Tooltip}}</title><rect class="gchip gchip-{{.Level}}" x="{{.X}}" y="{{.Y}}" width="{{.W}}" height="{{.H}}" rx="8"/><text class="gchiptext gchip-{{.Level}}" x="{{.TX}}" y="{{.TY}}">{{.Text}}</text></g>{{end}}
+    {{if .Href}}</a>{{end}}
+  </g>
+  {{end}}
+</svg>
+<div class="graph-legend">
+  {{range .Legend}}<span class="graph-legend-item"><i class="gsw gsw-{{.Key}}"></i>{{.Label}}</span>{{end}}
+  {{if .HasScan}}<span class="graph-legend-item">Chip: worst vulnerability of the image</span>{{end}}
+</div>
+{{end}}
+
+{{define "topology"}}
+{{range .Stacks}}
+<div class="tp-stack{{if .Unmanaged}} unmanaged{{end}}">
+  <div class="tp-head">
+    {{if .Href}}<a href="{{.Href}}" class="tp-name">{{.Name}}</a>{{else}}<span class="tp-name">{{.Name}}</span>{{end}}
+    <span>{{.Running}}/{{len .Rows}} running</span>
+    <span class="tp-sp"></span>
+    {{with .Worst}}<span class="topo-chip gchip-{{.Level}}" title="{{.Tooltip}}">{{.Text}}</span>{{end}}
+  </div>
+  <table class="tp-table">
+    <thead><tr><th class="tp-c-name">Container</th><th class="tp-image">Image</th><th class="tp-c-vuln">Vulnerabilities</th><th class="tp-c-net">Networks</th><th class="tp-c-vol">Volumes</th></tr></thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td><span class="topo-dot gdot-{{.Dot}}"></span> <a class="tp-cname" href="{{.Href}}" title="{{.Tip}}">{{.Name}}</a></td>
+        <td class="tp-image"><code title="{{.ImageTip}}">{{.Image}}</code></td>
+        <td>{{with .Chip}}<span class="topo-chip gchip-{{.Level}}" title="{{.Tooltip}}">{{.Text}}</span>{{else}}—{{end}}</td>
+        <td><div class="tp-pills">{{range .Networks}}<a class="tp-pill {{.Class}}" href="{{.Href}}" title="{{.Tip}}">{{.Label}}</a>{{else}}—{{end}}</div></td>
+        <td><div class="tp-pills">{{range .Volumes}}<a class="tp-vol" href="{{.Href}}" title="{{.Tip}}">{{.Label}}</a>{{else}}—{{end}}</div></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</div>
+{{end}}
+<div class="tp-legend">
+  <span>Networks</span>
+  {{range .Networks}}<span class="tp-legend-item"><a class="tp-pill {{.Class}}" href="{{.Href}}">{{.Label}}</a> {{.Note}}</span>{{end}}
+</div>
+<div class="tp-legend">
+  {{if .Unused}}<a href="/volumes">{{.Unused}} volume(s) not used by any container</a>{{end}}
+  {{if .HasScan}}<span>Chip: worst vulnerability of the image</span>{{end}}
+</div>
+{{end}}
+
 {{define "scanbadge"}}{{if .}}{{if .Link}}<a href="{{.Link}}" class="badge scan-{{.Level}}" title="{{.Tooltip}}">{{.Label}}</a>{{else}}<span class="badge scan-{{.Level}}" title="{{.Tooltip}}">{{.Label}}</span>{{end}}{{end}}{{end}}

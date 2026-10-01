@@ -359,8 +359,10 @@ func (a *app) stackViewHandler(w http.ResponseWriter, r *http.Request) {
 	if dep, ok, err := a.store.LatestDeploymentForStack(id); err == nil && ok {
 		data["Deployment"] = dep
 	}
+	var policies []imagePolicyViewRow
 	if rows, err := imagePolicyViewRows(a, id); err == nil {
 		data["ImagePolicies"] = rows
+		policies = rows
 	}
 	if rows, err := stackContainerRows(a, id); err == nil {
 		data["Containers"] = rows
@@ -378,9 +380,12 @@ func (a *app) stackViewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+	var bindings []bindingRow
 	if st.SourceType == "git" {
-		data["SecretBindings"], data["UnboundConnectors"] = a.stackSecretsView(id)
+		bindings, data["UnboundConnectors"] = a.stackSecretsView(id)
+		data["SecretBindings"] = bindings
 	}
+	var secretKeys []string
 	if st.SourceType == "local" {
 		if revs, err := a.store.ListStackRevisions(id); err == nil {
 			data["Revisions"] = revs
@@ -396,6 +401,7 @@ func (a *app) stackViewHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			sort.Strings(names)
 			data["SecretKeys"] = names
+			secretKeys = names
 		}
 	}
 	if st.Trigger == "webhook" {
@@ -407,6 +413,9 @@ func (a *app) stackViewHandler(w http.ResponseWriter, r *http.Request) {
 			host = r.Host
 		}
 		data["WebhookURL"] = fmt.Sprintf("https://%s:9443/hooks/%s", host, st.ID)
+	}
+	if g := a.stackGraph(st, policies, bindings, secretKeys); g != nil {
+		data["Graph"] = g
 	}
 	render(w, r, "layout", "stack_view.html", data)
 }

@@ -26,6 +26,13 @@
   </table>
 </section>
 
+{{if .Topology}}
+<section class="panel">
+  <h2>Topology</h2>
+  {{template "topology" .Topology}}
+</section>
+{{end}}
+
 <section class="panel">
   <h2>Resources</h2>
   {{if .Connected}}
