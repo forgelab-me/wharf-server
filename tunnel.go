@@ -80,9 +80,11 @@ type tunnelMessage struct {
 
 	// "command" (controller -> agent)
 	RequestID   string `json:"request_id,omitempty"`
-	Action      string `json:"action,omitempty"` // "restart" | "stop" | "logs" | "inspect" | "stats" | "top" | "host_stats" | "image_inspect" | "image_history" | "volume_inspect" | "network_inspect" | "volume_sizes" | "volume_list" | "volume_read" | "volume_write" | "volume_rename" | "volume_delete"
+	Action      string `json:"action,omitempty"` // "restart" | "stop" | "logs" | "inspect" | "stats" | "stats_many" | "top" | "host_stats" | "image_inspect" | "image_history" | "volume_inspect" | "network_inspect" | "volume_sizes" | "volume_list" | "volume_read" | "volume_write" | "volume_rename" | "volume_delete"
 	ContainerID string `json:"container_id,omitempty"`
 	Tail        string `json:"tail,omitempty"` // "logs" only, cf. sendLogsCommand
+
+	ContainerIDs []string `json:"container_ids,omitempty"` // "stats_many" only, cf. stackstats.go
 
 	// Volume browsing (controller -> agent) -- Path/NewPath are always
 	// the full in-container path under the ephemeral helper's /vol mount

@@ -2,6 +2,14 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [0.17.0] - 2026-10-01
+
+### Added
+- The stacks list is now an overview with live figures. Each stack is one row: its host, its state (running 3/3, partial, stopped, failed, deploying), its trigger, the worst vulnerability of its images, and its CPU, memory, network and disk. A row unfolds into one card per container with its image, vulnerabilities, ports, volumes and four live curves; a stack with nothing running keeps its cards, greyed. Rows are folded by default and what you unfolded is remembered by the browser. Figures refresh every 5 seconds while the tab is visible, and the hosts are measured once however many pages are open. It needs agent 0.7.0 on the host; an older agent shows an "update the agent" note instead. There is no history: the curves fill in while the page is open.
+
+### Changed
+- The stacks list no longer has a "Last status" and a "Last sha" column: the state column replaces them (the last deployment's status is its tooltip), and the commit a polling stack last saw is on its own page.
+
 ## [0.16.0] - 2026-10-01
 
 ### Added

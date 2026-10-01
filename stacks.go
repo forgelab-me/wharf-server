@@ -24,40 +24,11 @@ import (
 	"github.com/forgelab-me/wharf-server/internal/store"
 )
 
-// stackRow is the stacks-list view model — deployment history doesn't
-// exist yet (no agent), so status/sha are always the "never deployed"
-// placeholder for now.
-type stackRow struct {
-	ID, Name, Host, Trigger, LastStatusClass, LastStatusLabel, LastSha string
-}
-
 func (a *app) stacksHandler(w http.ResponseWriter, r *http.Request) {
-	stacks, err := a.store.ListStacks()
+	rows, err := a.stackRows()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	rows := make([]stackRow, 0, len(stacks))
-	for _, s := range stacks {
-		row := stackRow{
-			ID: s.ID, Name: s.Name, Host: a.hostLabel(s.Host), Trigger: s.Trigger,
-			LastStatusClass: "never", LastStatusLabel: "never deployed", LastSha: "—",
-		}
-		if dep, ok, err := a.store.LatestDeploymentForStack(s.ID); err == nil && ok {
-			row.LastStatusClass = dep.Status
-			row.LastStatusLabel = dep.Status
-		}
-		// Only ever populated for a polling-mode stack -- the last commit
-		// its own poll loop saw (cf. poller.go's RecordPoll), not
-		// necessarily what's actually running if a deploy since then
-		// failed. Manual/webhook-triggered git stacks have no commit
-		// tracked anywhere yet (the agent never reports one back), so
-		// they correctly stay "—" rather than showing something stale or
-		// guessed.
-		if s.LastPolledSHA != "" {
-			row.LastSha = shortDigest(s.LastPolledSHA)
-		}
-		rows = append(rows, row)
 	}
 	data := map[string]any{
 		"Title":  "Stacks",

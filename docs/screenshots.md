@@ -9,6 +9,11 @@ Connected hosts, active stacks and the latest deployments at a glance.
 
 ![Dashboard](screenshots/dashboard.png)
 
+### Stacks
+One row per stack with its state, worst vulnerability and live CPU, memory, network and disk; a row unfolds into one card per container with four live curves. A stack with nothing running keeps its cards, greyed.
+
+![Stacks list](screenshots/stacks.png)
+
 ### New stack
 A stack lives in Git (deployed with a dedicated deploy key or a shared connection) or is authored in Wharf. Pick a trigger — manual, webhook or polling — and the host it runs on.
 

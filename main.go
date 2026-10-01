@@ -22,6 +22,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/forgelab-me/wharf-server/internal/identity"
 	"github.com/forgelab-me/wharf-server/internal/keys"
@@ -54,6 +55,8 @@ type app struct {
 	notifyState *notifyState      // cf. notifications.go -- "already notified" tracking, level-triggered events
 	vuln        *vulnEngine       // cf. vulnscan.go -- image vulnerability scanning
 	resolver    *secrets.Resolver // cf. agent_resolve.go -- secrets.refs.yaml providers
+	statsOnce   sync.Once
+	statsC      *statsCollector // cf. stackstats.go -- live figures of the stacks list
 }
 
 type Stat struct {
@@ -369,6 +372,7 @@ func main() {
 	mux.HandleFunc("GET /hosts", a.hostsHandler)
 	mux.HandleFunc("GET /hosts/{id}", a.hostViewHandler)
 	mux.HandleFunc("GET /hosts/{id}/stats", a.hostStatsHandler)
+	mux.HandleFunc("GET /stats/stacks", a.stackStatsHandler)
 	mux.HandleFunc("POST /hosts/{id}/approve", a.approveHostHandler)
 	mux.HandleFunc("POST /hosts/{id}/reject", a.rejectHostHandler)
 	mux.HandleFunc("POST /hosts/{id}/address", a.setHostAddressHandler)

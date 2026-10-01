@@ -1,21 +1,34 @@
 {{define "content"}}
-<div class="toolbar">
+<div class="toolbar toolbar-split">
   <a href="/stacks/new" class="btn btn-primary">+ New stack</a>
+  {{if .Stacks}}
+  <div class="filter-group">
+    <span class="muted" id="st-live" style="font-size:12px;">live figures · every 5 s · paused while this tab is hidden</span>
+    <button type="button" class="btn btn-ghost btn-sm" id="st-all">Expand all</button>
+  </div>
+  {{end}}
 </div>
 <div class="panel">
   {{if .Stacks}}
-  <table>
+  <table class="st-table">
     <thead>
-      <tr><th>Name</th><th>Target host</th><th>Trigger</th><th>Last status</th><th>Last sha</th><th></th></tr>
+      <tr>
+        <th class="st-c-name">Name</th><th class="st-c-host">Host</th><th class="st-c-state">State</th><th class="st-c-trig">Trigger</th>
+        <th class="st-c-vuln">Vulnerabilities</th><th class="st-c-cpu">CPU</th><th class="st-c-mem">Memory</th><th class="st-c-net">Network</th><th class="st-c-disk">Disk</th><th class="st-c-act"></th>
+      </tr>
     </thead>
     <tbody>
       {{range .Stacks}}
-      <tr>
-        <td><a href="/stacks/{{.ID}}">{{.Name}}</a></td>
-        <td>{{.Host}}</td>
+      <tr class="st-row" data-id="{{.ID}}">
+        <td class="st-name">{{if .Cards}}<button type="button" class="st-caret" aria-expanded="false" aria-label="Show the containers of {{.Name}}">▸</button>{{else}}<span class="st-caret"></span>{{end}}<a href="/stacks/{{.ID}}">{{.Name}}</a></td>
+        <td class="muted">{{.Host}}</td>
+        <td><span class="st-badge {{.StateClass}}"{{if .LastStatus}} title="Last deployment: {{.LastStatus}}"{{end}}>{{.StateLabel}}</span></td>
         <td><span class="badge trigger-{{.Trigger}}">{{.Trigger}}</span></td>
-        <td><span class="badge status-{{.LastStatusClass}}">{{.LastStatusLabel}}</span></td>
-        <td><code>{{.LastSha}}</code></td>
+        <td>{{with .Worst}}<span class="topo-chip gchip-{{.Level}}" title="{{.Tooltip}}">{{.Text}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="st-num" data-m="cpu">—</td>
+        <td class="st-num" data-m="mem">—</td>
+        <td class="st-num" data-m="net">—</td>
+        <td class="st-num" data-m="disk">—</td>
         <td class="row-actions">
           <form method="post" action="/stacks/{{.ID}}/delete" class="delete-stack-form">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
@@ -23,9 +36,210 @@
           </form>
         </td>
       </tr>
+      {{if .Cards}}
+      <tr class="st-detail" data-for="{{.ID}}" hidden>
+        <td colspan="10">
+          <div class="st-cards">
+            {{range .Cards}}
+            <div class="st-card{{if not .Active}} off{{end}}" data-cid="{{.ID}}">
+              <div class="st-ctop">
+                <span class="topo-dot gdot-{{.Dot}}"></span>
+                <a class="st-cname" href="/containers/{{.ID}}">{{.Name}}</a>
+                <span class="st-sp"></span>
+                {{with .Chip}}<span class="topo-chip gchip-{{.Level}}" title="{{.Tooltip}}">{{.Text}}</span>{{end}}
+              </div>
+              <div class="st-cimg"><code title="{{.ImageTip}}">{{.Image}}</code></div>
+              <div class="st-mets">
+                <div class="st-met" data-m="cpu"><div class="st-ml"><span>CPU</span><b>—</b></div><svg viewBox="0 0 100 24" preserveAspectRatio="none"></svg></div>
+                <div class="st-met" data-m="mem"><div class="st-ml"><span>Memory</span><b>—</b></div><svg viewBox="0 0 100 24" preserveAspectRatio="none"></svg></div>
+                <div class="st-met" data-m="net"><div class="st-ml"><span>Network</span><b>—</b></div><svg viewBox="0 0 100 24" preserveAspectRatio="none"></svg></div>
+                <div class="st-met" data-m="disk"><div class="st-ml"><span>Disk</span><b>—</b></div><svg viewBox="0 0 100 24" preserveAspectRatio="none"></svg></div>
+              </div>
+              <div class="st-pills">
+                {{range .Ports}}{{if .URL}}<a class="st-pill" href="{{.URL}}" target="_blank" rel="noopener">{{.Text}}</a>{{else}}<span class="st-pill">{{.Text}}</span>{{end}}{{end}}
+                {{if .Volumes}}<span class="st-pill">{{.Volumes}} vol</span>{{end}}
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </td>
+      </tr>
+      {{end}}
       {{end}}
     </tbody>
   </table>
+  <script>
+    (function () {
+      var KEY = 'wharf.stacks.open';
+      var WINDOW = 60;
+      function readOpen() {
+        try { var v = JSON.parse(localStorage.getItem(KEY) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+      }
+      function writeOpen(list) {
+        try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {}
+      }
+
+      var stacks = {};
+      document.querySelectorAll('tr.st-row').forEach(function (row) {
+        stacks[row.dataset.id] = { row: row, detail: null, caret: row.querySelector('button.st-caret'), open: false };
+      });
+      document.querySelectorAll('tr.st-detail').forEach(function (d) {
+        if (stacks[d.dataset.for]) stacks[d.dataset.for].detail = d;
+      });
+
+      function openIds() { return Object.keys(stacks).filter(function (id) { return stacks[id].open; }); }
+      function setOpen(id, on) {
+        var st = stacks[id];
+        if (!st || !st.detail) return;
+        st.open = on;
+        st.detail.hidden = !on;
+        st.row.classList.toggle('open', on);
+        if (st.caret) st.caret.setAttribute('aria-expanded', on ? 'true' : 'false');
+        if (on) drawCards(id);
+      }
+      var allBtn = document.getElementById('st-all');
+      function foldable() { return Object.keys(stacks).filter(function (id) { return stacks[id].detail; }); }
+      function syncAll() {
+        var ids = foldable();
+        allBtn.textContent = ids.length && ids.every(function (id) { return stacks[id].open; }) ? 'Collapse all' : 'Expand all';
+        allBtn.hidden = ids.length === 0;
+      }
+      Object.keys(stacks).forEach(function (id) {
+        var st = stacks[id];
+        st.row.addEventListener('click', function (e) {
+          if (!st.detail || e.target.closest('a, form, input, select, textarea')) return;
+          setOpen(id, !st.open);
+          writeOpen(openIds());
+          syncAll();
+        });
+      });
+      allBtn.addEventListener('click', function () {
+        var ids = foldable();
+        var on = !ids.every(function (id) { return stacks[id].open; });
+        ids.forEach(function (id) { setOpen(id, on); });
+        writeOpen(openIds());
+        syncAll();
+      });
+
+      // ---- live figures
+      function fmt(n, base, units) {
+        var i = 0;
+        while (n >= base && i < units.length - 1) { n /= base; i++; }
+        return (n < 10 && i > 0 ? n.toFixed(1) : n.toFixed(0)) + ' ' + units[i];
+      }
+      function bytes(n) { return fmt(n, 1024, ['B', 'KiB', 'MiB', 'GiB', 'TiB']); }
+      function rate(n) { return fmt(n, 1000, ['B/s', 'kB/s', 'MB/s', 'GB/s']); }
+      function texts(m, cur) {
+        if (!cur) return '—';
+        switch (m) {
+          case 'cpu': return cur.cpu.toFixed(1) + '%';
+          case 'mem': return bytes(cur.mem);
+          case 'net': return cur.rx === null ? '…' : '↓' + rate(cur.rx) + ' ↑' + rate(cur.tx);
+          default: return cur.rd === null ? '…' : 'r' + rate(cur.rd) + ' w' + rate(cur.wr);
+        }
+      }
+
+      var series = {}; // key -> rolling window of what the page has seen
+      var previous = {}; // key -> the last totals, to turn them into rates
+      function push(key, at, s) {
+        var ser = series[key] || (series[key] = { cpu: [], mem: [], rx: [], tx: [], rd: [], wr: [], cur: null });
+        var p = previous[key], r = null;
+        if (p && at > p.at) {
+          var dt = (at - p.at) / 1000;
+          // a total that went down is a container that restarted: no rate for that step
+          var d = function (now, before) { return Math.max(0, (now - before) / dt); };
+          r = { rx: d(s.netRx, p.rx), tx: d(s.netTx, p.tx), rd: d(s.blkRead, p.rd), wr: d(s.blkWrite, p.wr) };
+        }
+        previous[key] = { at: at, rx: s.netRx, tx: s.netTx, rd: s.blkRead, wr: s.blkWrite };
+        ser.cpu.push(s.cpu);
+        ser.mem.push(s.memBytes);
+        if (r) { ser.rx.push(r.rx); ser.tx.push(r.tx); ser.rd.push(r.rd); ser.wr.push(r.wr); }
+        ['cpu', 'mem', 'rx', 'tx', 'rd', 'wr'].forEach(function (k) { if (ser[k].length > WINDOW) ser[k].shift(); });
+        ser.cur = { cpu: s.cpu, mem: s.memBytes, rx: r ? r.rx : null, tx: r ? r.tx : null, rd: r ? r.rd : null, wr: r ? r.wr : null };
+        return ser;
+      }
+
+      function spark(svg, lines, floor, fromZero) {
+        var all = [];
+        lines.forEach(function (l) { all = all.concat(l.v); });
+        if (!all.length) { svg.innerHTML = ''; return; }
+        var max = Math.max.apply(null, all), min = fromZero ? 0 : Math.min.apply(null, all);
+        if (fromZero) {
+          max = Math.max(max, floor);
+        } else {
+          var pad = Math.max((max - min) * 0.15, max * 0.02, 1);
+          min = Math.max(0, min - pad);
+          max += pad;
+        }
+        var span = max - min || 1;
+        svg.innerHTML = '<line class="st-base" x1="0" y1="23" x2="100" y2="23"></line>' + lines.map(function (l) {
+          var n = l.v.length;
+          var pts = l.v.map(function (v, i) {
+            return ((WINDOW - n + i) / (WINDOW - 1) * 100).toFixed(1) + ',' + (22 - (v - min) / span * 20).toFixed(1);
+          }).join(' ');
+          return '<polyline class="st-l st-l-' + l.cls + '" points="' + pts + '"></polyline>';
+        }).join('');
+      }
+      function sparkSpec(m, ser) {
+        if (m === 'cpu') return [[{ v: ser.cpu, cls: 'cpu' }], 5, true];
+        if (m === 'mem') return [[{ v: ser.mem, cls: 'mem' }], 0, false];
+        if (m === 'net') return [[{ v: ser.rx, cls: 'rx' }, { v: ser.tx, cls: 'tx' }], 1000, true];
+        return [[{ v: ser.rd, cls: 'rd' }, { v: ser.wr, cls: 'wr' }], 1000, true];
+      }
+
+      function drawCards(id) {
+        var st = stacks[id];
+        if (!st || !st.detail || st.detail.hidden) return;
+        st.detail.querySelectorAll('.st-card').forEach(function (card) {
+          var ser = series['c:' + card.dataset.cid];
+          card.querySelectorAll('.st-met').forEach(function (met) {
+            var m = met.dataset.m;
+            met.querySelector('b').textContent = texts(m, ser && !card.classList.contains('off') ? ser.cur : null);
+            var svg = met.querySelector('svg');
+            if (!ser || card.classList.contains('off')) { svg.innerHTML = ''; return; }
+            var spec = sparkSpec(m, ser);
+            spark(svg, spec[0], spec[1], spec[2]);
+          });
+        });
+      }
+
+      var live = document.getElementById('st-live');
+      var liveText = live.textContent;
+      var busy = false;
+      function apply(j) {
+        var notes = [];
+        Object.keys(stacks).forEach(function (id) {
+          var st = stacks[id], s = j.stacks[id];
+          var cells = st.row.querySelectorAll('[data-m]');
+          var measured = s && s.state === 'ok' && Object.keys(s.containers).length > 0;
+          if (s && s.state !== 'ok' && s.message && notes.indexOf(s.message) < 0) notes.push(s.message);
+          var ser = measured ? push('s:' + id, j.at, s.totals) : null;
+          cells.forEach(function (c) {
+            c.textContent = texts(c.dataset.m, ser ? ser.cur : null);
+            c.title = s && s.state !== 'ok' ? (s.message || s.state) : '';
+          });
+          if (measured) Object.keys(s.containers).forEach(function (cid) { push('c:' + cid, j.at, s.containers[cid]); });
+          drawCards(id);
+        });
+        live.textContent = liveText + (notes.length ? ' · ' + notes.join(' · ') : '');
+      }
+      function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        fetch('/stats/stacks', { credentials: 'same-origin', cache: 'no-store' })
+          .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+          .then(apply)
+          .catch(function () { live.textContent = 'live figures unavailable right now'; })
+          .then(function () { busy = false; });
+      }
+
+      readOpen().forEach(function (id) { setOpen(id, true); });
+      syncAll();
+      tick();
+      setInterval(tick, 5000);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    })();
+  </script>
   {{else}}
   <p class="muted">No stack yet — <a href="/stacks/new">create one</a>.</p>
   {{end}}

@@ -153,7 +153,7 @@ func buildHostTopology(in hostGraphInput) *topology {
 		if !stack.Unmanaged {
 			stack.Href = "/stacks/" + stackIDOf[g]
 		}
-		var worst *scanBadge
+		var badges []*scanBadge
 		for _, c := range list {
 			row := topoRow{Name: c.Name, Href: "/containers/" + c.ContainerID, Dot: dotFor(c.State),
 				Image: shortImage(c.Image), ImageTip: c.Image,
@@ -165,9 +165,7 @@ func buildHostTopology(in hostGraphInput) *topology {
 				if b := in.Scan(c); b != nil {
 					row.Chip = chipFor(b, true)
 					t.HasScan = true
-					if worst == nil || scanRank(b.Level) > scanRank(worst.Level) {
-						worst = b
-					}
+					badges = append(badges, b)
 				}
 			}
 			for _, n := range splitList(c.Networks) {
@@ -184,7 +182,7 @@ func buildHostTopology(in hostGraphInput) *topology {
 			}
 			stack.Rows = append(stack.Rows, row)
 		}
-		stack.Worst = chipFor(worst, true)
+		stack.Worst = chipFor(worstOf(badges), true)
 		t.Stacks = append(t.Stacks, stack)
 	}
 
