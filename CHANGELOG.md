@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [## [0.17.1] - 2026-10-01]
+
+### Fixed
+- On the stacks list, the network and disk figures flickered between their value and "…". The controller keeps a measure for 3 seconds and the page asks every 5, so when a measure took a moment, or a second tab was open, the page was served the same measure twice and could not compute a rate from it. A measure it has already seen is now ignored: the figures stay, and the curves no longer get a duplicate point. The rates are also computed over the time the figures came back rather than the time they were asked for, which matters when the engine is slow.
+
 ## [0.17.0] - 2026-10-01
 
 ### Added

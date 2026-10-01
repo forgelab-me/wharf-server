@@ -144,7 +144,9 @@
       function push(key, at, s) {
         var ser = series[key] || (series[key] = { cpu: [], mem: [], rx: [], tx: [], rd: [], wr: [], cur: null });
         var p = previous[key], r = null;
-        if (p && at > p.at) {
+        // the controller caches a measure for a few seconds: seeing it again tells nothing new
+        if (p && at <= p.at) return ser;
+        if (p) {
           var dt = (at - p.at) / 1000;
           // a total that went down is a container that restarted: no rate for that step
           var d = function (now, before) { return Math.max(0, (now - before) / dt); };

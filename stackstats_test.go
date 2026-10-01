@@ -333,3 +333,15 @@ func TestLineForNeverMatchesOnAnEmptyID(t *testing.T) {
 		t.Error("another container")
 	}
 }
+
+func TestMeasureIsStampedWhenTheFiguresCameBack(t *testing.T) {
+	s := newStatsFixture(t)
+	slow := s.reply
+	s.reply = func(host string) (string, error) {
+		s.advance(2 * time.Second) // a slow engine: the counters are read some time after the question
+		return slow(host)
+	}
+	if got := s.f.a.statsCollector().get().At; got != 1000*1000+2000 {
+		t.Errorf("at = %d, want the time the figures came back (%d)", got, 1000*1000+2000)
+	}
+}

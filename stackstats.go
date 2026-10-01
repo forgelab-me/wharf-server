@@ -233,7 +233,8 @@ func (c *statsCollector) get() stackStatsResponse {
 }
 
 func (c *statsCollector) collect() stackStatsResponse {
-	resp := stackStatsResponse{At: c.now().UnixMilli(), Stacks: map[string]stackStat{}}
+	resp := stackStatsResponse{Stacks: map[string]stackStat{}}
+	resp.At = c.now().UnixMilli()
 	stacks, err := c.a.store.ListStacks()
 	if err != nil {
 		return resp
@@ -294,6 +295,9 @@ func (c *statsCollector) collect() stackStatsResponse {
 		}()
 	}
 	wg.Wait()
+	// stamped when the figures came back, not when they were asked for: the
+	// counters are read about then, and the page divides by the time between two
+	resp.At = c.now().UnixMilli()
 	resp.Stacks = buildStackStats(stacks, containers, measures)
 	return resp
 }
