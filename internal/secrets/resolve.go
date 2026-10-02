@@ -169,8 +169,8 @@ func (r *Resolver) Resolve(ctx context.Context, job *Job, entries []Entry) (Resu
 				failures = append(failures, Failure{e.Key, e.Ref, err})
 				continue
 			}
-			if !PathAllowed(eff.Prefixes, e.Ref.Path) {
-				failures = append(failures, Failure{e.Key, e.Ref, fmt.Errorf("path %q is outside the prefixes allowed for this stack (%s)", e.Ref.Path, strings.Join(eff.Prefixes, ", "))})
+			if !eff.PathAllowed(e.Ref.Path) {
+				failures = append(failures, Failure{e.Key, e.Ref, fmt.Errorf("path %q is outside the prefixes allowed for this stack (%s)", e.Ref.Path, eff.AllowedSummary())})
 				continue
 			}
 		}

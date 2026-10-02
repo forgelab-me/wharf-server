@@ -41,6 +41,7 @@ type bindingRow struct {
 	Connection string
 	Mode       string
 	Prefixes   string
+	Rules      string // the connection's path rules for this stack, {stack} replaced
 }
 
 // stackSecretsView fills the stack page's "Secret references" panel.
@@ -55,6 +56,7 @@ func (a *app) stackSecretsView(stackID string) (rows []bindingRow, unbound []sec
 		}
 		if conn, err := a.store.GetSecretConnection(b.ConnectionID); err == nil {
 			row.Mode, row.Connection = bindingMode(a, conn)
+			row.Rules = a.bindingRules(conn, stackID)
 		} else {
 			row.Mode, row.Connection = "broken", "connection missing"
 		}
@@ -66,6 +68,21 @@ func (a *app) stackSecretsView(stackID string) (rows []bindingRow, unbound []sec
 		}
 	}
 	return rows, unbound
+}
+
+// bindingRules is what a connection's path rules allow a stack, for display.
+func (a *app) bindingRules(conn store.SecretConnection, stackID string) string {
+	config := conn.Config
+	if conn.ParentID != "" {
+		if parent, err := a.store.GetSecretConnection(conn.ParentID); err == nil {
+			config = parent.Config
+		}
+	}
+	rules, err := secrets.ParseRules(config[secrets.PathRulesKey])
+	if err != nil {
+		return ""
+	}
+	return strings.Join(secrets.ExpandRules(rules, stackID), ", ")
 }
 
 // bindingMode describes a binding's connection for display.
@@ -113,6 +130,7 @@ func (a *app) stackBindingFormHandler(w http.ResponseWriter, r *http.Request) {
 		ID, Name string
 		Selected bool
 		HasCreds bool
+		Rules    []string // what this connection's path rules allow this stack, {stack} replaced
 	}
 	var options []globalOption
 	for _, g := range globals {
@@ -120,7 +138,8 @@ func (a *app) stackBindingFormHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		set, _ := a.keys.SecretCredentialFields(g.ID)
-		options = append(options, globalOption{ID: g.ID, Name: g.Name, HasCreds: len(set) > 0})
+		rules, _ := secrets.ParseRules(g.Config[secrets.PathRulesKey])
+		options = append(options, globalOption{ID: g.ID, Name: g.Name, HasCreds: len(set) > 0, Rules: secrets.ExpandRules(rules, st.ID)})
 	}
 
 	mode := modeShared
@@ -150,16 +169,17 @@ func (a *app) stackBindingFormHandler(w http.ResponseWriter, r *http.Request) {
 
 	configFields, credFields := fieldViews(connector, config, setCreds)
 	render(w, r, "layout", "secret_binding_form.html", map[string]any{
-		"Title":        connector.Label() + " — " + st.Name,
-		"Nav":          "stacks",
-		"Stack":        st,
-		"Connector":    connector,
-		"Existing":     existing,
-		"Mode":         mode,
-		"Globals":      options,
-		"Prefixes":     prefixes,
-		"ConfigFields": configFields,
-		"CredFields":   credFields,
+		"Title":         connector.Label() + " — " + st.Name,
+		"Nav":           "stacks",
+		"Stack":         st,
+		"Connector":     connector,
+		"Existing":      existing,
+		"Mode":          mode,
+		"Globals":       options,
+		"Prefixes":      prefixes,
+		"PathRulesDocs": secrets.PathRulesDocsURL,
+		"ConfigFields":  configFields,
+		"CredFields":    credFields,
 	})
 }
 
@@ -171,12 +191,12 @@ func (a *app) saveStackBindingHandler(w http.ResponseWriter, r *http.Request) {
 	typ := connector.Scheme()
 	back := "/stacks/" + st.ID + "/secrets/bindings/" + typ
 
-	prefixes, err := secrets.NormalizePrefixes(r.FormValue("prefixes"))
+	mode := r.FormValue("mode")
+	prefixes, err := a.bindingPrefixes(r, mode)
 	if err != nil {
 		redirectWithError(w, r, back, err.Error())
 		return
 	}
-	mode := r.FormValue("mode")
 
 	var previous store.SecretConnection
 	hasPrevious := false
@@ -230,6 +250,41 @@ func (a *app) saveStackBindingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	a.audit(r, "secrets.binding_set", st.Name, typ+" ("+mode+"): "+strings.Join(prefixes, ", "))
 	redirectWithSavedMessage(w, r, "/stacks/"+st.ID, connector.Label()+" connection saved")
+}
+
+// bindingPrefixes reads a binding's allowed paths. They are required, unless the
+// connection has path rules: then they are optional extras, and a "*" is
+// refused, since rules exist to keep a stack from being given everything.
+func (a *app) bindingPrefixes(r *http.Request, mode string) ([]string, error) {
+	var rulesText string
+	switch mode {
+	case modeShared, modeOwn:
+		if parent, err := a.store.GetSecretConnection(r.FormValue("connection_id")); err == nil {
+			rulesText = parent.Config[secrets.PathRulesKey]
+		}
+	case modeSeparate:
+		rulesText = r.FormValue("cfg_" + secrets.PathRulesKey)
+	}
+	rules, err := secrets.ParseRules(rulesText)
+	if err != nil {
+		return nil, err
+	}
+	if len(rules) == 0 {
+		return secrets.NormalizePrefixes(r.FormValue("prefixes"))
+	}
+	extras, err := secrets.ParsePrefixes(r.FormValue("prefixes"))
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range extras {
+		if p == "*" {
+			return nil, errors.New("this connection has path rules: list the extra paths this stack may read, not *")
+		}
+	}
+	if extras == nil {
+		extras = []string{}
+	}
+	return extras, nil
 }
 
 // localConnection creates or updates the stack-private connection for a

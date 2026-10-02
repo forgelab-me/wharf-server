@@ -603,7 +603,7 @@
   {{else}}
   <input type="text" name="{{.InputName}}" value="{{.Value}}" placeholder="{{.Placeholder}}" {{if .Required}}required{{end}}>
   {{end}}
-  {{if .Help}}<p class="muted" style="font-size:12px;">{{.Help}}</p>{{end}}
+  {{if .Help}}<p class="muted" style="font-size:12px;">{{.Help}}{{if .HelpURL}} <a href="{{.HelpURL}}" target="_blank" rel="noopener">Read more</a>{{end}}</p>{{end}}
 </div>
 {{end}}
 

@@ -313,7 +313,7 @@
           {{else if eq .Mode "separate"}}<span class="badge">own connection</span>
           {{else}}<span class="badge status-failed">{{.Connection}}</span>{{end}}
         </td>
-        <td><code>{{.Prefixes}}</code></td>
+        <td><code>{{if .Rules}}{{.Rules}}{{if .Prefixes}}, {{end}}{{end}}{{.Prefixes}}</code>{{if .Rules}} <span class="muted" style="font-size:11px;">(connection rules{{if .Prefixes}} + extra{{end}})</span>{{end}}</td>
         <td class="row-actions">
           {{if eq $.Role "admin"}}
           <form method="post" action="/stacks/{{$.Stack.ID}}/secrets/bindings/{{.Type}}/test" class="inline-form">

@@ -50,6 +50,7 @@ func (*vaultProvider) Fields() []Field {
 		{Name: "namespace", Label: "Namespace", Help: "Optional."},
 		{Name: "approle_mount", Label: "AppRole auth mount", Default: "approle", Help: "Only used with a role ID and secret ID."},
 		{Name: "ca_pem", Label: "CA certificate (PEM)", Input: "textarea", Help: "Only needed when the server uses a private CA."},
+		PathRulesField,
 		{Name: "token", Label: "Token", Credential: true, Help: "Either a token, or an AppRole role ID and secret ID."},
 		{Name: "role_id", Label: "AppRole role ID", Credential: true},
 		{Name: "secret_id", Label: "AppRole secret ID", Credential: true},
@@ -79,7 +80,7 @@ func (*vaultProvider) ValidateConfig(config map[string]string) error {
 			return errors.New("CA certificate is not a valid PEM certificate")
 		}
 	}
-	return nil
+	return ValidatePathRules(config)
 }
 
 func (*vaultProvider) ValidateCredentials(creds map[string]string) error {

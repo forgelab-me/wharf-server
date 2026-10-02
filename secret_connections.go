@@ -21,6 +21,12 @@ const checkTimeout = 15 * time.Second
 // config (inherited from the parent for a local connection that has one)
 // and the credentials that apply.
 func (a *app) effectiveFor(conn store.SecretConnection, prefixes []string) (*secrets.Effective, error) {
+	return a.effectiveForStack(conn, "", prefixes)
+}
+
+// effectiveForStack is effectiveFor for a given stack, whose id the connection's
+// path rules are written around.
+func (a *app) effectiveForStack(conn store.SecretConnection, stackID string, prefixes []string) (*secrets.Effective, error) {
 	config := conn.Config
 	var source string
 	switch {
@@ -43,7 +49,11 @@ func (a *app) effectiveFor(conn store.SecretConnection, prefixes []string) (*sec
 	if len(creds) == 0 {
 		return nil, fmt.Errorf("connection %q has no credentials: give this stack its own", conn.Name)
 	}
-	return secrets.NewEffective(conn.Type, config, creds, prefixes, source), nil
+	eff := secrets.NewEffective(conn.Type, config, creds, prefixes, source)
+	if err := eff.ApplyPathRules(stackID); err != nil {
+		return nil, err
+	}
+	return eff, nil
 }
 
 // stackBinding returns the lookup a Job uses to find a stack's connection for a scheme.
@@ -60,7 +70,7 @@ func (a *app) stackBinding(stackID string) func(scheme string) (*secrets.Effecti
 		if err != nil {
 			return nil, fmt.Errorf("load this stack's %s connection: %w", scheme, err)
 		}
-		return a.effectiveFor(conn, b.Prefixes)
+		return a.effectiveForStack(conn, stackID, b.Prefixes)
 	}
 }
 
@@ -150,6 +160,11 @@ func credentialsFromForm(r *http.Request, c secrets.Connector) map[string]string
 
 // connectorSummary is the one-line description shown in lists: the first required config field.
 func connectorSummary(c secrets.Connector, config map[string]string) string {
+	if s, ok := c.(interface {
+		Summary(map[string]string) string
+	}); ok {
+		return s.Summary(config)
+	}
 	for _, f := range c.Fields() {
 		if !f.Credential && f.Required {
 			return config[f.Name]
@@ -164,6 +179,7 @@ type secretProviderRow struct {
 	Label          string
 	Summary        string
 	HasCredentials bool
+	Rules          []string // the connection's path rules, {stack} as written
 	Shared, Own    []string
 }
 
@@ -176,6 +192,7 @@ func (a *app) secretProvidersHandler(w http.ResponseWriter, r *http.Request) {
 	rows := make([]secretProviderRow, 0, len(conns))
 	for _, c := range conns {
 		row := secretProviderRow{ID: c.ID, Name: c.Name, Label: c.Type}
+		row.Rules, _ = secrets.ParseRules(c.Config[secrets.PathRulesKey])
 		if connector, ok := a.resolver.Connector(c.Type); ok {
 			row.Label = connector.Label()
 			row.Summary = connectorSummary(connector, c.Config)
@@ -191,6 +208,7 @@ func (a *app) secretProvidersHandler(w http.ResponseWriter, r *http.Request) {
 		"Nav":        "secret-providers",
 		"Rows":       rows,
 		"Connectors": a.resolver.Connectors(),
+		"Bws":        a.bwsStatus(),
 	})
 }
 

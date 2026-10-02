@@ -2,6 +2,16 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [## [0.18.0] - 2026-10-02]
+
+### Added
+- **Bitwarden Secrets Manager** as a secret provider: `ref+bws://<project>/<secret key>#/value` (or `#/note`). Wharf reads it through Bitwarden's own `bws` tool, whose licence does not allow bundling it, so the controller downloads the pinned release (checked against its SHA-256) into the cache volume, only when an administrator asks and after showing the licence. A connection takes a machine account's access token and a region (US, EU or a custom server). If two projects share a name, or two secrets share a key, the reference fails instead of picking one.
+- **Path rules** on a secret connection, for OpenBao / Vault and Bitwarden: one rule per line, applied to every stack that uses the connection, so no path has to be typed stack by stack. `{stack}` stands for the stack's id and `*` for any characters inside one segment: `secret/{stack}` gives each stack its own folder, `{stack}` a Bitwarden project per stack, `homelab/{stack}_*` the secrets named after the stack in a shared project. A rule that would let one stack read another's secrets, such as `{stack}-*`, is refused when saved.
+  - When a connection has rules, a stack's allowed paths become optional extra paths added to them, and `*` is refused there. A connection without rules behaves as before.
+  - The paths box of a stack's attachment form says which it is: "Extra paths (optional)" with the rules it adds to, or "Allowed paths" when it is required.
+  - The Secret providers list shows each connection's rules and its address (Bitwarden's server included), and has an Edit button.
+  - A new documentation page, [Path rules](https://wharf.forgelab.me/guide/path-rules), has the syntax, the stack id, worked examples and the refused rules; the connection form and the attachment form link to it.
+
 ## [## [0.17.2] - 2026-10-02]
 
 ### Changed

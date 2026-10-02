@@ -55,6 +55,7 @@ type app struct {
 	notifyState *notifyState      // cf. notifications.go -- "already notified" tracking, level-triggered events
 	vuln        *vulnEngine       // cf. vulnscan.go -- image vulnerability scanning
 	resolver    *secrets.Resolver // cf. agent_resolve.go -- secrets.refs.yaml providers
+	bws         *secrets.BwsTool  // cf. secret_tools.go -- the Bitwarden tool, downloaded on request
 	statsOnce   sync.Once
 	statsC      *statsCollector // cf. stackstats.go -- live figures of the stacks list
 }
@@ -313,16 +314,18 @@ func main() {
 	fingerprint := identity.Fingerprint(cert.Certificate[0])
 	log.Println("controller identity:", fingerprint)
 
-	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider())}
+	cacheDir := os.Getenv("WHARF_CACHE_DIR")
+	if cacheDir == "" {
+		cacheDir = "/cache"
+	}
+	bws := secrets.NewBwsTool(cacheDir)
+	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), bws: bws,
+		resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider(), secrets.BwsProvider(bws))}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
 	// time (cronParser in poller.go) — registration must never accept a
 	// spec its own validation already approved.
 	a.cron = cron.New(cron.WithParser(cronParser))
-	cacheDir := os.Getenv("WHARF_CACHE_DIR")
-	if cacheDir == "" {
-		cacheDir = "/cache"
-	}
 	a.vuln = newVulnEngine(a, cacheDir)
 	existingStacks, err := st.ListStacks()
 	if err != nil {
@@ -460,6 +463,7 @@ func main() {
 	mux.HandleFunc("POST /settings/secret-providers/{id}", requireAdmin(a.updateSecretProviderHandler))
 	mux.HandleFunc("POST /settings/secret-providers/{id}/delete", requireAdmin(a.deleteSecretProviderHandler))
 	mux.HandleFunc("POST /settings/secret-providers/{id}/test", requireAdmin(a.testSecretProviderHandler))
+	mux.HandleFunc("POST /settings/secret-providers/bws/install", requireAdmin(a.installBwsHandler))
 	mux.HandleFunc("GET /stacks/{id}/secrets/bindings/{type}", requireAdmin(a.stackBindingFormHandler))
 	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}", requireAdmin(a.saveStackBindingHandler))
 	mux.HandleFunc("POST /stacks/{id}/secrets/bindings/{type}/delete", requireAdmin(a.deleteStackBindingHandler))

@@ -23,6 +23,8 @@ type Field struct {
 	Required    bool
 	Input       string // "text" (default), "textarea" or "select"
 	Options     []string
+	// HelpURL, when set, is shown as a "Read more" link after the help text.
+	HelpURL string
 }
 
 // Connector is a provider that reads from an external service through a
@@ -44,6 +46,10 @@ type Effective struct {
 	Config      map[string]string
 	Credentials map[string]string
 	Prefixes    []string
+	// Rules are the connection's path rules with {stack} already replaced;
+	// HasRules says the connection has some at all, even when none applies.
+	Rules    []string
+	HasRules bool
 	// Source says where the credentials come from, for errors and audit.
 	Source string
 	// Identity changes whenever the config or credentials do, and differs
@@ -82,10 +88,65 @@ func IsNoBinding(err error) bool {
 	return errors.As(err, &nb)
 }
 
-// NormalizePrefixes parses the allowed-prefix input: one path per line (or
-// comma-separated), each covering itself and everything below it. A lone
-// "*" allows every path.
+// ApplyPathRules reads the connection's rules from its config and puts a
+// stack's id in them. A stack id that cannot be put in a rule gets nothing.
+func (e *Effective) ApplyPathRules(stackID string) error {
+	rules, err := ParseRules(e.Config[PathRulesKey])
+	if err != nil {
+		return fmt.Errorf("the connection's path rules are invalid: %w", err)
+	}
+	e.HasRules = len(rules) > 0
+	e.Rules = ExpandRules(rules, stackID)
+	return nil
+}
+
+// PathAllowed reports whether the stack may read a path: it is covered by one
+// of its own allowed paths or by a path rule of the connection. When the
+// connection has rules, a "*" allowed path no longer counts: rules limit what
+// a stack can be given, they are not a default to override.
+func (e *Effective) PathAllowed(path string) bool {
+	prefixes := e.Prefixes
+	if e.HasRules {
+		prefixes = nil
+		for _, p := range e.Prefixes {
+			if p != "*" {
+				prefixes = append(prefixes, p)
+			}
+		}
+	}
+	return PathAllowed(prefixes, path) || RuleAllowed(e.Rules, path)
+}
+
+// AllowedSummary lists what a stack may read, for error messages.
+func (e *Effective) AllowedSummary() string {
+	var parts []string
+	parts = append(parts, e.Prefixes...)
+	for _, r := range e.Rules {
+		parts = append(parts, "rule "+r)
+	}
+	if len(parts) == 0 {
+		return "nothing: no allowed path and no path rule"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// NormalizePrefixes parses the allowed-prefix input like ParsePrefixes, and
+// requires at least one.
 func NormalizePrefixes(input string) ([]string, error) {
+	out, err := ParsePrefixes(input)
+	if err != nil {
+		return nil, err
+	}
+	if len(out) == 0 {
+		return nil, errors.New("at least one allowed path prefix is required (use * to allow everything)")
+	}
+	return out, nil
+}
+
+// ParsePrefixes parses the allowed-prefix input: one path per line (or
+// comma-separated), each covering itself and everything below it. A lone
+// "*" allows every path. It may be empty.
+func ParsePrefixes(input string) ([]string, error) {
 	fields := strings.FieldsFunc(input, func(r rune) bool { return r == '\n' || r == '\r' || r == ',' })
 	var out []string
 	seen := map[string]bool{}
@@ -104,9 +165,6 @@ func NormalizePrefixes(input string) ([]string, error) {
 			seen[p] = true
 			out = append(out, p)
 		}
-	}
-	if len(out) == 0 {
-		return nil, errors.New("at least one allowed path prefix is required (use * to allow everything)")
 	}
 	return out, nil
 }
