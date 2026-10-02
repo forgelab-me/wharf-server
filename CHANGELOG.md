@@ -2,6 +2,13 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+## [## [0.17.2] - 2026-10-02]
+
+### Changed
+- On the containers list, an image's freshness is now a small dot before its name (green: up to date, amber: update available) instead of a badge with words, with a legend under the table. The vulnerability badges are behind a new **Vulnerabilities** switch in the toolbar, off by default and remembered by the browser; the search still finds them.
+- In the Images panel of a stack, the Applied and Latest columns and the last one now share one two-line layout: the image name, or the Apply button, on the first line, and the vulnerability badge, or the "Update available" badge under the button, on the second. They used to sit at different heights from one column to the next.
+- The **Tools** and **Settings** groups of the sidebar are folded by default, which takes the menu from 17 links to 7. A group opens with a click and your browser remembers it; on one of its own pages the group is open, so the current page's entry is always shown. Settings is also reordered by theme: Users, Authentication; Git connections, Registry, Secret providers; Vulnerability scanning, Notifications; Audit log, Backup & Restore.
+
 ## [## [0.17.1] - 2026-10-01]
 
 ### Fixed

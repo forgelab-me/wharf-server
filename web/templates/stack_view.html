@@ -195,7 +195,7 @@
     </thead>
     <tbody>
       {{range .ImagePolicies}}
-      <tr>
+      <tr{{if or .AppliedScan .LatestScan .UpdateAvailable}} class="has-l2{{if .UpdateAvailable}} has-btn{{end}}"{{end}}>
         <td>{{.ServiceName}}</td>
         <td><code>{{.ImageRef}}</code></td>
         <td>
@@ -208,16 +208,16 @@
             </select>
           </form>
         </td>
-        <td class="muted"><code>{{if .AppliedShort}}{{.AppliedShort}}{{else}}—{{end}}</code>{{if .AppliedScan}}<div>{{template "scanbadge" .AppliedScan}}</div>{{end}}</td>
-        <td class="muted"><code>{{if .LatestShort}}{{.LatestShort}}{{else}}—{{end}}</code>{{if .LatestScan}}<div>{{template "scanbadge" .LatestScan}}</div>{{end}}</td>
+        <td class="muted"><div class="img-l1"><code>{{if .AppliedShort}}{{.AppliedShort}}{{else}}—{{end}}</code></div><div class="img-l2">{{template "scanbadge" .AppliedScan}}</div></td>
+        <td class="muted"><div class="img-l1"><code>{{if .LatestShort}}{{.LatestShort}}{{else}}—{{end}}</code></div><div class="img-l2">{{template "scanbadge" .LatestScan}}</div></td>
         <td>
-          {{if .UpdateAvailable}}
-          <span class="badge status-pending">Update available</span>
-          <form method="post" action="/stacks/{{$.Stack.ID}}/images/{{.ServiceName}}/apply" class="inline-form">
-            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
-            <button type="submit" class="btn btn-ghost">Apply</button>
-          </form>
-          {{end}}
+          <div class="img-l1">{{if .UpdateAvailable}}
+            <form method="post" action="/stacks/{{$.Stack.ID}}/images/{{.ServiceName}}/apply" class="inline-form">
+              <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+              <button type="submit" class="btn btn-ghost">Apply</button>
+            </form>{{end}}
+          </div>
+          <div class="img-l2">{{if .UpdateAvailable}}<span class="badge status-pending">Update available</span>{{end}}</div>
         </td>
       </tr>
       {{end}}

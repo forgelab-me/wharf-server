@@ -23,20 +23,43 @@
         <a href="/volumes" class="{{if eq .Nav "volumes"}}active{{end}}">Volumes</a>
         <a href="/networks" class="{{if eq .Nav "networks"}}active{{end}}">Networks</a>
         {{if eq .Role "admin"}}
-        <div class="nav-section">Tools</div>
-        <a href="/tools/secrets" class="{{if eq .Nav "secrets-tool"}}active{{end}}">Encrypt secrets</a>
-        <div class="nav-section">Settings</div>
-        <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
-        <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
-        <a href="/settings/secret-providers" class="{{if eq .Nav "secret-providers"}}active{{end}}">Secret providers</a>
-        <a href="/settings/vulnerability-scanning" class="{{if eq .Nav "vuln-scanning"}}active{{end}}">Vulnerability scanning</a>
-        <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
-        <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
-        <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
-        <a href="/settings/backup" class="{{if eq .Nav "backup"}}active{{end}}">Backup &amp; Restore</a>
-        <a href="/settings/notifications" class="{{if eq .Nav "notifications"}}active{{end}}">Notifications</a>
+        <details class="nav-group" data-key="tools"{{if eq .Nav "secrets-tool"}} open{{end}}>
+          <summary class="nav-section">Tools</summary>
+          <a href="/tools/secrets" class="{{if eq .Nav "secrets-tool"}}active{{end}}">Encrypt secrets</a>
+        </details>
+        <details class="nav-group" data-key="settings"{{if or (eq .Nav "users") (eq .Nav "git-connections") (eq .Nav "secret-providers") (eq .Nav "vuln-scanning") (eq .Nav "authentication") (eq .Nav "registries") (eq .Nav "audit-log") (eq .Nav "backup") (eq .Nav "notifications")}} open{{end}}>
+          <summary class="nav-section">Settings</summary>
+          <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
+          <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
+          <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
+          <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
+          <a href="/settings/secret-providers" class="{{if eq .Nav "secret-providers"}}active{{end}}">Secret providers</a>
+          <a href="/settings/vulnerability-scanning" class="{{if eq .Nav "vuln-scanning"}}active{{end}}">Vulnerability scanning</a>
+          <a href="/settings/notifications" class="{{if eq .Nav "notifications"}}active{{end}}">Notifications</a>
+          <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
+          <a href="/settings/backup" class="{{if eq .Nav "backup"}}active{{end}}">Backup &amp; Restore</a>
+        </details>
         {{end}}
       </nav>
+      <script>
+        // The Tools and Settings groups are <details>: closed unless the page is one of theirs (the
+        // server opens that one), and what you open yourself is remembered by this browser. Only
+        // opens here, never closes, so a page inside a group always shows its own link.
+        (function () {
+          var KEY = 'wharf.nav.open', saved = {};
+          try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) {}
+          document.querySelectorAll('details.nav-group').forEach(function (d) {
+            if (saved[d.dataset.key] === true) d.open = true;
+            d.querySelector('summary').addEventListener('click', function () {
+              // the click flips the group after this handler: read it once it has
+              setTimeout(function () {
+                saved[d.dataset.key] = d.open;
+                try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {}
+              }, 0);
+            });
+          });
+        })();
+      </script>
       <div class="sidebar-footer">
         {{if .Mock}}<span class="badge mock">Preview — sample data</span>{{end}}
         <span class="version">{{.Version}}</span>

@@ -156,10 +156,11 @@ func (a *app) containersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := map[string]any{
-		"Title":      "Containers",
-		"Nav":        "containers",
-		"Containers": containers,
-		"Hosts":      hosts,
+		"Title":       "Containers",
+		"Nav":         "containers",
+		"Containers":  containers,
+		"Hosts":       hosts,
+		"ScanEnabled": scans != nil,
 	}
 	render(w, r, "layout", "containers.html", data)
 }

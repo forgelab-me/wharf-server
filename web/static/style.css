@@ -79,6 +79,14 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--border);
 }
 
+.nav-group > summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; user-select: none; }
+.nav-group > summary::-webkit-details-marker { display: none; }
+.nav-group > summary::after { content: "▸"; font-size: 10px; transition: transform 0.15s; }
+.nav-group[open] > summary::after { transform: rotate(90deg); }
+.nav-group > summary:hover { color: var(--text); background: var(--bg-elevated); }
+.nav-group > a { display: block; margin-top: 2px; }
+.nav-group + .nav-group > summary { border-top: 0; }
+
 .sidebar-footer { margin-top: auto; padding: 0 20px; display: flex; flex-direction: column; gap: 6px; }
 .sidebar-footer .version { font-size: 11px; color: var(--text-muted); font-family: var(--mono); }
 
@@ -690,4 +698,19 @@ tr.st-detail[hidden] { display: none; }
 .st-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 18px; }
 .st-pill { padding: 0 7px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-panel); color: #a9b8c7; font-size: 11px; text-decoration: none; }
 a.st-pill:hover { border-color: var(--accent); }
+
+/* containers list: the image's freshness as a dot, vulnerabilities behind a switch */
+.upd-dot { display: inline-block; width: 8px; height: 8px; margin-right: 7px; border-radius: 50%; background: transparent; vertical-align: middle; }
+.upd-current { background: var(--ok); }
+.upd-outdated { background: var(--warn); }
+.upd-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 12px; font-size: 12px; color: var(--text-muted); }
+.upd-legend span { display: inline-flex; align-items: center; }
+.hide-vuln .vuln-badge { display: none; }
+
+/* Images panel of a stack: the Applied, Latest and last columns share one two-line layout, so the
+   names line up with the Apply button, and the vulnerability badges with the update badge */
+.img-l1 { display: flex; align-items: center; min-height: 22px; }
+.img-l2 { display: none; }
+tr.has-l2 .img-l2 { display: flex; align-items: center; min-height: 22px; }
+tr.has-btn .img-l1 { min-height: 34px; }
 

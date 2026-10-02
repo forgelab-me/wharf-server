@@ -8,12 +8,13 @@
     <input type="search" class="search-filter" placeholder="Search containers...">
     <label class="switch-filter"><span class="switch"><input type="checkbox" class="running-only-filter"><span class="switch-track"></span></span> Only running</label>
     <label class="switch-filter"><span class="switch"><input type="checkbox" class="managed-only-filter"><span class="switch-track"></span></span> My stacks only</label>
+    {{if .ScanEnabled}}<label class="switch-filter"><span class="switch"><input type="checkbox" class="vuln-toggle"><span class="switch-track"></span></span> Vulnerabilities</label>{{end}}
   </div>
   <div></div>
 </div>
 <div class="panel">
   {{if .Containers}}
-  <table>
+  <table class="containers-table{{if .ScanEnabled}} hide-vuln{{end}}">
     <thead>
       <tr><th>Name</th><th>Image</th><th>Host</th><th>Stack</th><th>Status</th><th>Ports</th><th>Created</th><th></th></tr>
     </thead>
@@ -22,10 +23,8 @@
       <tr data-host="{{.Host}}" data-state="{{.State}}" data-managed="{{if .Stack}}true{{else}}false{{end}}">
         <td><a href="/containers/{{.ID}}">{{.Name}}</a></td>
         <td>
-          <code>{{.ImageDisplay}}</code>
-          {{if eq .UpdateStatus "current"}}<span class="badge status-succeeded">up to date</span>{{end}}
-          {{if eq .UpdateStatus "outdated"}}<span class="badge status-pending">update available</span>{{end}}
-          {{template "scanbadge" .Scan}}
+          {{if eq .UpdateStatus "current"}}<span class="upd-dot upd-current" title="Up to date" role="img" aria-label="up to date"></span>{{else if eq .UpdateStatus "outdated"}}<span class="upd-dot upd-outdated" title="Update available" role="img" aria-label="update available"></span>{{else}}<span class="upd-dot"></span>{{end}}<code>{{.ImageDisplay}}</code>
+          <span class="vuln-badge">{{template "scanbadge" .Scan}}</span>
         </td>
         <td>{{.Host}}</td>
         <td>{{if .ManagedStack}}<a href="/stacks/{{.Stack}}">{{.Stack}}</a>{{else if .Stack}}<span class="muted" title="Not tracked by Wharf — deployed by something else">{{.Stack}}</span>{{else}}<span class="muted">—</span>{{end}}</td>
@@ -54,6 +53,33 @@
       {{end}}
     </tbody>
   </table>
+  <div class="upd-legend">
+    <span><i class="upd-dot upd-current"></i> up to date</span>
+    <span><i class="upd-dot upd-outdated"></i> update available</span>
+    <span>checked for the containers of a stack that has an image policy</span>
+  </div>
+  {{if .ScanEnabled}}
+  <script>
+    (function () {
+      var toggle = document.querySelector('.vuln-toggle');
+      var table = document.querySelector('table.containers-table');
+      if (!toggle || !table) return;
+      var KEY = 'wharf.containers.vulnerabilities';
+      var on = false;
+      try { on = localStorage.getItem(KEY) === '1'; } catch (e) {}
+      function apply() {
+        table.classList.toggle('hide-vuln', !on);
+        toggle.checked = on;
+      }
+      toggle.addEventListener('change', function () {
+        on = toggle.checked;
+        apply();
+        try { localStorage.setItem(KEY, on ? '1' : '0'); } catch (e) {}
+      });
+      apply();
+    })();
+  </script>
+  {{end}}
   {{else}}
   <p class="muted">No containers on any connected host yet.</p>
   {{end}}
