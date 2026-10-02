@@ -447,3 +447,28 @@ func TestBwsToolPath(t *testing.T) {
 		t.Errorf("path = %s", got)
 	}
 }
+
+// What bws prints when the controller cannot reach Bitwarden: the cause is in the lines below the first.
+func TestBwsErrorKeepsTheWholeChainOfCauses(t *testing.T) {
+	stderr := `Error: 
+   0: error sending request for url (https://vault.bitwarden.com/identity/connect/token)
+   1: client error (Connect)
+   2: dns error
+   3: failed to lookup address information: Name does not resolve
+
+Location:
+   crates/bws/src/main.rs:107
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+`
+	got := bwsError(context.Background(), fmt.Errorf("exit status 1"), stderr, "").Error()
+	want := "bws: error sending request for url (https://vault.bitwarden.com/identity/connect/token): client error (Connect): dns error: failed to lookup address information: Name does not resolve"
+	if got != want {
+		t.Errorf("got  %q\nwant %q", got, want)
+	}
+
+	one := "Error: \n   0: Received error message from server: [400 Bad Request] {\"error\":\"invalid_client\"}\n\nLocation:\n   x.rs:1\n"
+	if got := bwsError(context.Background(), fmt.Errorf("exit status 1"), one, "").Error(); !strings.Contains(got, "invalid_client") || strings.Contains(got, "Location") {
+		t.Errorf("a single line stays a single line: %q", got)
+	}
+}

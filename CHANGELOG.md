@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.18.1] - 2026-10-02
+
+### Fixed
+- When Wharf could not reach Bitwarden, the connection test only said `bws: error sending request for url (…)`, which does not say why. The error now gives the whole chain of causes that `bws` prints, such as `client error (Connect): dns error: failed to lookup address information`, so a DNS problem, a refused connection or a certificate error can be told apart.
+
 ## [## [0.18.0] - 2026-10-02]
 
 ### Added

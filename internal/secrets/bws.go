@@ -201,7 +201,8 @@ func runBws(ctx context.Context, bin string, args, env []string) ([]byte, string
 	return out.Bytes(), errb.String(), err
 }
 
-var bwsErrLine = regexp.MustCompile(`(?m)^\s*0:\s*(.+)$`)
+// bwsErrLine matches the numbered chain bws prints, from the error to its causes.
+var bwsErrLine = regexp.MustCompile(`(?m)^\s*\d+:\s*(.+)$`)
 
 // bwsError turns what bws printed into a message, without ever echoing the token.
 func bwsError(ctx context.Context, err error, stderr, token string) error {
@@ -209,9 +210,12 @@ func bwsError(ctx context.Context, err error, stderr, token string) error {
 		return fmt.Errorf("bws did not answer in time: %w", ctx.Err())
 	}
 	msg := ""
-	if m := bwsErrLine.FindStringSubmatch(stderr); m != nil {
-		msg = strings.TrimSpace(m[1])
+	// "error sending request" alone says nothing: the lines below it say why (dns error, refused, certificate).
+	var chain []string
+	for _, m := range bwsErrLine.FindAllStringSubmatch(stderr, -1) {
+		chain = append(chain, strings.TrimSpace(m[1]))
 	}
+	msg = strings.Join(chain, ": ")
 	if msg == "" {
 		for _, line := range strings.Split(stderr, "\n") {
 			if line = strings.TrimSpace(line); line != "" && line != "Error:" {
