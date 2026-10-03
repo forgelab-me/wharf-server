@@ -5,6 +5,7 @@
 package store
 
 import (
+	"context"
 	"crypto/rand"
 	"database/sql"
 	"errors"
@@ -347,6 +348,9 @@ func Open(path string) (*Store, error) {
 }
 
 func (s *Store) Close() error { return s.db.Close() }
+
+// Ping proves the database answers, for the health check.
+func (s *Store) Ping(ctx context.Context) error { return s.db.PingContext(ctx) }
 
 func (s *Store) CreateStack(st Stack) error {
 	var connID any

@@ -364,6 +364,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticRoot))))
+	mux.HandleFunc("GET /healthz", a.healthzHandler)
 	mux.HandleFunc("GET /login", a.loginFormHandler)
 	mux.HandleFunc("POST /login", a.loginHandler)
 	mux.HandleFunc("GET /auth/oidc/login", a.oidcLoginHandler)

@@ -7,6 +7,7 @@ package keys
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"database/sql"
@@ -132,6 +133,9 @@ func isDuplicateColumn(err error) bool {
 }
 
 func (c *Custodian) Close() error { return c.db.Close() }
+
+// Ping proves the database answers, for the health check.
+func (c *Custodian) Ping(ctx context.Context) error { return c.db.PingContext(ctx) }
 
 // GenerateKeypair creates a fresh age keypair for stackID and returns only
 // the public key. The private key is written straight to the isolated

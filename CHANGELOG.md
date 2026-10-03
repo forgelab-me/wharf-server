@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.19.0] - 2026-10-03
+
+### Added
+- **A health check for the controller.** `GET /healthz`, on the UI ports and without a login, answers `200 ok` when the main database and the secrets store both respond and `503 unhealthy` when one does not, and says nothing more: no version, no name of what failed (the cause goes to the log, at most once a minute). The image has a `HEALTHCHECK` on it, so `docker ps` shows `(healthy)` or `(unhealthy)`, and a monitoring tool can probe it from outside, which is the only way to learn that the controller itself is down: its notifications stop with it.
+
 [0.18.3] - 2026-10-03
 
 ### Added

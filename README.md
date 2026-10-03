@@ -56,6 +56,8 @@ volumes:
 | `9443` | UI, HTTPS (self-signed) |
 | `8443` | Agent enrollment + command channel (mTLS, fingerprint-pinned) |
 
+`GET /healthz` on the UI ports (`8080`, `9443`) answers `200 ok` when both databases respond and `503 unhealthy` otherwise, without a login and without saying more; the image's `HEALTHCHECK` calls it. See [Health checks](https://wharf.forgelab.me/guide/monitoring).
+
 ## Layout
 
 ```
@@ -78,6 +80,7 @@ server/
 ├── poller.go              Git polling-trigger scheduler
 ├── stats.go               live CPU/mem/disk stats (container + host)
 ├── tunnel.go              the agent-facing WebSocket protocol
+├── health.go              GET /healthz, the controller's health check
 ├── internal/
 │   ├── store/             main application database (SQLite) — stacks, hosts,
 │   │                      deployments, users, sessions

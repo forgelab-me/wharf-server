@@ -35,4 +35,8 @@ VOLUME /data
 # Optional vulnerability scanner binaries and databases, downloaded when an admin
 # turns scanning on: gigabytes, so a volume of their own, never /data.
 VOLUME /cache
+# Both databases answer. Docker only marks the container unhealthy (it does not
+# restart it), which is what a monitoring tool or `docker ps` reads.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
 ENTRYPOINT ["wharf-server"]

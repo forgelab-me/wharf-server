@@ -80,10 +80,11 @@ func requireAdmin(next http.HandlerFunc) http.HandlerFunc {
 // secret — cf. verifyWebhookAuth — a browser session is meaningless
 // there since the caller is GitHub/GitLab, not an operator), and the
 // OIDC login/callback pair (cf. oidc.go) — by definition reached by
-// someone who doesn't have a Wharf session yet.
+// someone who doesn't have a Wharf session yet — and /healthz, which a
+// monitoring probe has no session to present.
 func publicPath(path string) bool {
 	return path == "/login" || strings.HasPrefix(path, "/static/") || strings.HasPrefix(path, "/hooks/") ||
-		path == "/auth/oidc/login" || path == "/auth/oidc/callback"
+		path == "/auth/oidc/login" || path == "/auth/oidc/callback" || path == "/healthz"
 }
 
 // requireAuth wraps the UI mux so every non-public route needs a live
