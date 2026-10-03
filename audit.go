@@ -94,6 +94,14 @@ func (a *app) audit(r *http.Request, action, target, detail string) {
 	}
 }
 
+// auditSystem records something Wharf did on its own, under a fixed actor
+// (like "webhook" for a push): there is no session to take a username from.
+func (a *app) auditSystem(actor, action, target, detail string) {
+	if err := a.store.RecordAudit(actor, action, target, detail); err != nil {
+		log.Println("audit:", err)
+	}
+}
+
 // auditLogHandler serves GET /audit-log, admin-only like the rest of
 // Settings.
 func (a *app) auditLogHandler(w http.ResponseWriter, r *http.Request) {

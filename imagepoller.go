@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"log"
+	"strings"
 
 	"github.com/forgelab-me/wharf-server/internal/registry"
 	"github.com/forgelab-me/wharf-server/internal/store"
@@ -85,7 +86,7 @@ func pollImages(a *app) {
 		if p.Policy != "auto" || !shouldApplyNow(p) {
 			continue // propose: leave it for the UI/Apply button
 		}
-		enqueueImageUpdate(a, p)
+		enqueueImageUpdate(a, p, digest)
 	}
 }
 
@@ -100,7 +101,9 @@ func shouldApplyNow(policy store.ImagePolicy) bool {
 	return policy.Policy == "auto"
 }
 
-func enqueueImageUpdate(a *app, p store.ImagePolicy) {
+// enqueueImageUpdate redeploys a stack whose "auto" policy saw a new digest, and
+// records it in the audit log.
+func enqueueImageUpdate(a *app, p store.ImagePolicy, digest string) {
 	if dep, ok, err := a.store.LatestDeploymentForStack(p.StackID); err == nil && ok {
 		if dep.Status == "queued" || dep.Status == "running" {
 			return
@@ -117,5 +120,11 @@ func enqueueImageUpdate(a *app, p store.ImagePolicy) {
 	log.Println("image poll:", p.StackID, p.ServiceName, "new digest — enqueueing deploy")
 	if _, err := a.store.EnqueueDeployment(st.ID, st.Host, "image-update", "up"); err != nil {
 		log.Println("image poll: enqueue deploy for", p.StackID, "failed:", err)
+		return
 	}
+	short := strings.TrimPrefix(digest, "sha256:")
+	if len(short) > 12 {
+		short = short[:12]
+	}
+	a.auditSystem("auto-update", "stack.image_update_auto", st.Name, p.ServiceName+": "+p.ImageRef+" → sha256:"+short)
 }

@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.18.3] - 2026-10-03
+
+### Added
+- **The audit log now records the deployments Wharf starts by itself.** A deploy started by a new commit on a polling stack is `stack.deploy_polling` (user `polling`, with the short commit), and one started by an image policy set to auto is `stack.image_update_auto` (user `auto-update`, with the service, image and short digest). Until now only the stack's deployment history showed them, so a stack redeployed at night by an automatic update left nothing in the audit. Only a deploy that was actually queued is logged.
+
 [0.18.2] - 2026-10-02
 
 ### Added

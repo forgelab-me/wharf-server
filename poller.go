@@ -109,10 +109,22 @@ func pollStack(a *app, stackID string) {
 		return
 	}
 
+	queuePolledDeploy(a, st, sha)
+}
+
+// queuePolledDeploy deploys a stack whose branch moved, and records it in the
+// audit log: nobody clicked, so the log is the only place that says it happened.
+func queuePolledDeploy(a *app, st store.Stack, sha string) {
 	log.Println("poll:", st.ID, "new commit", sha, "— enqueueing deploy")
 	if _, err := a.store.EnqueueDeployment(st.ID, st.Host, "polling", "up"); err != nil {
 		log.Println("poll: enqueue deploy for", st.ID, "failed:", err)
+		return
 	}
+	short := sha
+	if len(short) > 7 {
+		short = short[:7]
+	}
+	a.auditSystem("polling", "stack.deploy_polling", st.Name, "commit "+short)
 }
 
 // lsRemoteSha authenticates the same way commandsHandler resolves a
