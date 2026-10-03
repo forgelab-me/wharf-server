@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.18.2] - 2026-10-02
+
+### Added
+- **`{stack}` in the path of a reference.** The controller puts the id of the stack that deploys in its place, so one `secrets.refs.yaml` serves a stack on each server: `ref+bws://homelab/{stack}_PIHOLE#/value` reads `homelab/dnsweaver-1_PIHOLE` for the stack `dnsweaver-1` and `homelab/dnsweaver-2_PIHOLE` for `dnsweaver-2`. It only saves writing the id: path rules and allowed paths are checked on the resulting path, and an error shows that path. It works in the path only; any other text between braces, or `{stack}` after `#/`, is refused when the file is read.
+
 [0.18.1] - 2026-10-02
 
 ### Fixed

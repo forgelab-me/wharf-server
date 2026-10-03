@@ -69,7 +69,27 @@ func ParseRef(s string) (Ref, error) {
 	if err := checkChars(field); err != nil {
 		return Ref{}, fmt.Errorf("field: %w", err)
 	}
+	if strings.ContainsAny(field, "{}") {
+		return Ref{}, errors.New("field: {stack} is only available in the path")
+	}
 	return Ref{Scheme: scheme, Path: path, Field: field}, nil
+}
+
+// ExpandStack puts the id of the stack that deploys in place of {stack} in the
+// path. An id that is not a plain id (cf. stackIDRe) is refused rather than
+// written into a path.
+func (r Ref) ExpandStack(stackID string) (Ref, error) {
+	if !strings.Contains(r.Path, stackPlaceholder) {
+		return r, nil
+	}
+	if !stackIDRe.MatchString(stackID) {
+		return Ref{}, fmt.Errorf("{stack} cannot be used: the stack id %q is not a plain id", stackID)
+	}
+	r.Path = strings.ReplaceAll(r.Path, stackPlaceholder, stackID)
+	if err := checkPath(r.Path); err != nil {
+		return Ref{}, fmt.Errorf("path: %w", err)
+	}
+	return r, nil
 }
 
 func checkPath(path string) error {
@@ -78,6 +98,10 @@ func checkPath(path string) error {
 	}
 	if err := checkChars(path); err != nil {
 		return err
+	}
+	// {stack} is the one placeholder, put in place of the stack's id at resolution time
+	if strings.ContainsAny(strings.ReplaceAll(path, stackPlaceholder, ""), "{}") {
+		return errors.New("only {stack} can be written between braces")
 	}
 	for _, seg := range strings.Split(path, "/") {
 		switch seg {

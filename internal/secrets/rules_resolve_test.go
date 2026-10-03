@@ -152,3 +152,92 @@ func TestVaultRefusesWrongRulesInItsConfig(t *testing.T) {
 		t.Error("the connection form offers the rules field")
 	}
 }
+
+// ---- {stack} in a reference's path
+
+// recordingConnector is a connection-based provider that returns the path it was asked for.
+type recordingConnector struct{}
+
+func (recordingConnector) Scheme() string                              { return "vault" }
+func (recordingConnector) Label() string                               { return "recording" }
+func (recordingConnector) Fields() []Field                             { return nil }
+func (recordingConnector) ValidateConfig(map[string]string) error      { return nil }
+func (recordingConnector) ValidateCredentials(map[string]string) error { return nil }
+func (recordingConnector) Check(context.Context, *Effective) error     { return nil }
+func (recordingConnector) Resolve(_ context.Context, _ *Job, ref Ref) (string, error) {
+	return "read:" + ref.Path + "#" + ref.Field, nil
+}
+
+func stackJob(t *testing.T, stackID, rules string) *Job {
+	t.Helper()
+	return &Job{StackID: stackID, Binding: func(string) (*Effective, error) { return effectiveWith(t, rules, stackID, nil), nil }}
+}
+
+func resolveRefs(t *testing.T, job *Job, refs ...string) (Result, error) {
+	t.Helper()
+	var entries []Entry
+	for i, s := range refs {
+		ref, err := ParseRef(s)
+		if err != nil {
+			t.Fatalf("%q: %v", s, err)
+		}
+		entries = append(entries, Entry{Key: "K" + string(rune('A'+i)), Ref: ref})
+	}
+	return NewResolver(recordingConnector{}).Resolve(context.Background(), job, entries)
+}
+
+func TestStackPlaceholderGivesEachStackItsOwnSecretsFromOneFile(t *testing.T) {
+	const ref = "ref+vault://homelab/{stack}_PIHOLE#/value"
+	for _, stack := range []string{"dnsweaver-1", "dnsweaver-2"} {
+		res, err := resolveRefs(t, stackJob(t, stack, "homelab/{stack}_*"), ref)
+		if err != nil {
+			t.Fatalf("%s: %v", stack, err)
+		}
+		if got, want := res.Env["KA"], "read:homelab/"+stack+"_PIHOLE#value"; got != want {
+			t.Errorf("%s read %q, want %q", stack, got, want)
+		}
+	}
+}
+
+func TestStackPlaceholderStillGoesThroughThePathRules(t *testing.T) {
+	// the expansion cannot reach another stack's secrets: the rule sees the real path
+	_, err := resolveRefs(t, stackJob(t, "dnsweaver-2", "homelab/{stack}_*"), "ref+vault://homelab/dnsweaver-1_PIHOLE#/value")
+	if err == nil || !strings.Contains(err.Error(), `path "homelab/dnsweaver-1_PIHOLE" is outside`) {
+		t.Fatalf("a literal path of another stack is refused: %v", err)
+	}
+	// a placeholder that lands outside the rule is refused too, and the error shows the real path
+	_, err = resolveRefs(t, stackJob(t, "blog", "secret/{stack}"), "ref+vault://other/{stack}/db#/value")
+	if err == nil || !strings.Contains(err.Error(), `path "other/blog/db" is outside`) {
+		t.Fatalf("the error names the expanded path: %v", err)
+	}
+}
+
+func TestStackPlaceholderNeedsAPlainStackId(t *testing.T) {
+	for _, id := range []string{"", "../x", "Blog", "a/b", "blog_x"} {
+		job := &Job{StackID: id, Binding: func(string) (*Effective, error) { return effectiveWith(t, "", "blog", []string{"*"}), nil }}
+		if _, err := resolveRefs(t, job, "ref+vault://secret/{stack}/db#/value"); err == nil || !strings.Contains(err.Error(), "not a plain id") {
+			t.Errorf("stack id %q must make {stack} fail: %v", id, err)
+		}
+	}
+	// a reference without the placeholder does not care about the id
+	job := &Job{StackID: "", Binding: func(string) (*Effective, error) { return effectiveWith(t, "", "blog", []string{"*"}), nil }}
+	if _, err := resolveRefs(t, job, "ref+vault://secret/db#/value"); err != nil {
+		t.Errorf("no placeholder, nothing to expand: %v", err)
+	}
+}
+
+func TestParseRefAcceptsOnlyTheStackPlaceholder(t *testing.T) {
+	for s, ok := range map[string]bool{
+		"ref+bws://homelab/{stack}_PIHOLE#/value": true,
+		"ref+vault://secret/{stack}/{stack}#/pw":  true,
+		"ref+vault://secret/{stak}/db#/pw":        false,
+		"ref+vault://secret/{name}/db#/pw":        false,
+		"ref+vault://secret/{stack/db#/pw":        false,
+		"ref+vault://secret/stack}/db#/pw":        false,
+		"ref+vault://secret/db#/{stack}":          false,
+	} {
+		if _, err := ParseRef(s); (err == nil) != ok {
+			t.Errorf("%q: error = %v, accepted should be %v", s, err, ok)
+		}
+	}
+}

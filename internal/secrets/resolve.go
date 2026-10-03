@@ -158,27 +158,33 @@ func (r *Resolver) Resolve(ctx context.Context, job *Job, entries []Entry) (Resu
 	var failures []Failure
 
 	for _, e := range entries {
-		p, ok := r.providers[e.Ref.Scheme]
+		// {stack} first: the checks and the errors below see the real path
+		ref, err := e.Ref.ExpandStack(job.StackID)
+		if err != nil {
+			failures = append(failures, Failure{e.Key, e.Ref, err})
+			continue
+		}
+		p, ok := r.providers[ref.Scheme]
 		if !ok {
-			failures = append(failures, Failure{e.Key, e.Ref, fmt.Errorf("no provider for %q is available", e.Ref.Scheme)})
+			failures = append(failures, Failure{e.Key, ref, fmt.Errorf("no provider for %q is available", ref.Scheme)})
 			continue
 		}
 		if _, needsConnection := p.(Connector); needsConnection {
-			eff, err := job.Effective(e.Ref.Scheme)
+			eff, err := job.Effective(ref.Scheme)
 			if err != nil {
-				failures = append(failures, Failure{e.Key, e.Ref, err})
+				failures = append(failures, Failure{e.Key, ref, err})
 				continue
 			}
-			if !eff.PathAllowed(e.Ref.Path) {
-				failures = append(failures, Failure{e.Key, e.Ref, fmt.Errorf("path %q is outside the prefixes allowed for this stack (%s)", e.Ref.Path, eff.AllowedSummary())})
+			if !eff.PathAllowed(ref.Path) {
+				failures = append(failures, Failure{e.Key, ref, fmt.Errorf("path %q is outside the prefixes allowed for this stack (%s)", ref.Path, eff.AllowedSummary())})
 				continue
 			}
 		}
 		callCtx, cancel := context.WithTimeout(ctx, CallTimeout)
-		v, err := p.Resolve(callCtx, job, e.Ref)
+		v, err := p.Resolve(callCtx, job, ref)
 		cancel()
 		if err != nil {
-			failures = append(failures, Failure{e.Key, e.Ref, err})
+			failures = append(failures, Failure{e.Key, ref, err})
 			continue
 		}
 		res.Env[e.Key] = v
