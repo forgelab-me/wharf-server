@@ -96,14 +96,16 @@ Encrypt a `secrets.enc.yaml` for a stack in the browser, as plain age or SOPS, w
 ![Encrypt secrets](screenshots/secrets-tool.png)
 
 ### Secret providers
-Shared connections to an OpenBao / Vault server, for `ref+vault://` references in a stack's `secrets.refs.yaml`.
+Shared connections to OpenBao / Vault and to Bitwarden Secrets Manager, for `ref+vault://` and `ref+bws://` references in a stack's `secrets.refs.yaml`. Each connection lists its address and its path rules; Bitwarden's tool is downloaded from here, after the licence is accepted.
 
 ![Secret providers](screenshots/secret-providers.png)
 
 ### Attaching a provider to a stack
-Which connection a stack goes through, with which credentials, and the paths it may read.
+Which connection a stack goes through, with which credentials. When the connection has path rules, the paths box is optional and says what the rules already give the stack; without rules it lists every path the stack may read.
 
 ![Attaching a provider to a stack](screenshots/secret-binding.png)
+
+![The paths box of a stack whose connection has rules](screenshots/path-rules-extra.png)
 
 ![Secret references on a stack page](screenshots/stack-secret-references.png)
 

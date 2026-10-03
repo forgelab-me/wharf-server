@@ -40,7 +40,7 @@ services:
       WHARF_ADMIN_PASSWORD: ${WHARF_ADMIN_PASSWORD:?WHARF_ADMIN_PASSWORD must be set}
     volumes:
       - wharf-data:/data
-      # optional: only needed for vulnerability scanning (gigabytes, see the docs)
+      # optional: the vulnerability scanners (gigabytes) and the Bitwarden tool, downloaded on demand (see the docs)
       - wharf-cache:/cache
 
 volumes:
@@ -68,6 +68,10 @@ server/
 ├── users.go               user management (admin-only)
 ├── containers.go          container list/detail, env-var masking, port parsing
 ├── images.go, volumes.go, networks.go   Docker resource list/detail pages
+├── stacks.go, stacks_overview.go, stackstats.go   stack pages, the live overview of the stacks list and its per-container figures
+├── graph.go, graph_host.go, graph_pages.go        the topology graph of a stack and of a host
+├── agent_resolve.go       the agent's request to resolve secrets.refs.yaml
+├── secret_connections.go, stack_secrets.go, secret_tools.go   secret providers: connections, a stack's bindings, the Bitwarden tool download
 ├── imagepolicies.go       pin/auto/propose image-update tracking
 ├── imagepoller.go         background digest-check scheduler
 ├── vulnscan.go, vulnscan_ui.go   optional image vulnerability scanning (engine, pages, badges)
@@ -81,6 +85,7 @@ server/
 │   │                      holding every age/SSH private key, registry and OIDC
 │   │                      secrets. Never imports internal/store.
 │   ├── scanner/            Trivy and Grype as subprocesses: pinned download, scan, normalized findings
+│   ├── secrets/            secrets.refs.yaml: parsing, path rules and {stack}, and the providers (sops, OpenBao / Vault, Bitwarden through the bws tool)
 │   ├── registry/           generic Docker Registry v2 client (WWW-Authenticate
 │   │                      discovery — no per-vendor hardcoding beyond docker.io's
 │   │                      own domain quirk)
@@ -92,6 +97,7 @@ server/
 
 ## Design notes worth knowing before changing something
 
+- **Secret providers never run in the agent.** The agent sends `secrets.refs.yaml` to the controller, which resolves it with credentials that stay in `internal/keys`, checks every path against the connection's rules and the stack's allowed paths first, and returns only the variables asked for. Bitwarden is read through its own `bws` tool, downloaded on demand into `/cache` because its licence forbids bundling it.
 - **Two physically separate databases.** `internal/store` is the main application database; `internal/keys` is an isolated custodian that's the only code path ever holding a private key or a credential in plaintext. Keeping this boundary intact is the whole point — don't reach into one from the other.
 - **Server-rendered, no build step.** Views are `html/template` + `embed`, no Node, no client-side framework. JavaScript in `web/static` is hand-written and small on purpose.
 - **The agent tunnel is push, not poll.** The controller never reaches out to an agent for routine state (container lists, image inventory, etc.) — an agent pushes snapshots over its own persistent connection. On-demand actions (restart, logs, inspect, live stats) use the same tunnel as a request/reply.
