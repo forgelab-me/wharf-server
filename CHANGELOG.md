@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.3] - 2026-10-07
+
+### Changed
+- The volume tree of a backup job no longer lists Compose's own labels (`com.docker.compose.config-hash` and the others under `com.docker.compose.`), which are bookkeeping, not something to choose volumes by. They still count for the stack of a volume.
+
 [0.20.2] - 2026-10-07
 
 ### Changed

@@ -130,7 +130,7 @@
               var code = el('code', { text: v.n });
               if (excl[v.n]) code.className = 'vt-left-out';
               var row = el('label', { 'class': 'vt-vol' }, [cb, code]);
-              Object.keys(v.l).filter(function (k) { return k !== 'com.docker.compose.project' && k !== 'com.docker.compose.volume' && k !== 'com.docker.compose.version'; })
+              Object.keys(v.l).filter(function (k) { return k.indexOf('com.docker.compose.') !== 0; })
                 .sort().forEach(function (k) { row.appendChild(chip(k + '=' + v.l[k], 'plain')); });
               kids.appendChild(row);
             });
