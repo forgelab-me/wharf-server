@@ -1,0 +1,34 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Restore <code>{{.Volume}}</code> <span class="muted" style="font-size:13px;">{{.Job.Name}}</span></h2>
+  <p class="muted" style="font-size:12px;">The snapshot is restored into a <strong>new</strong> volume. The original is never overwritten: check the copy, then point your stack at it (or copy files over). A name that already exists is refused.</p>
+  {{if gt (len .Volumes) 1}}
+  <form method="get" action="/backups/jobs/{{.Job.ID}}/restore" class="form-row">
+    <label>Volume</label>
+    <select name="volume" onchange="this.form.submit()">{{range .Volumes}}<option value="{{.}}" {{if eq . $.Volume}}selected{{end}}>{{.}}</option>{{end}}</select>
+  </form>
+  {{end}}
+  {{if .LoadError}}
+  <p class="banner-error">The snapshots could not be listed: {{.LoadError}}</p>
+  {{else if not .Snapshots}}
+  <p class="muted">No snapshot of this volume yet.</p>
+  {{else}}
+  <form method="post" action="/backups/jobs/{{.Job.ID}}/restore">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <input type="hidden" name="volume" value="{{.Volume}}">
+    <div class="form-row">
+      <label>Snapshot *</label>
+      {{range $i, $s := .Snapshots}}<label class="radio"><input type="radio" name="snapshot" value="{{$s.ID}}" {{if eq $i 0}}checked{{end}}> <span data-utc>{{$s.Time}}</span> <code>{{$s.ShortID}}</code></label>{{end}}
+    </div>
+    <div class="form-row">
+      <label>New volume *</label>
+      <input type="text" name="new_volume" required value="{{.NewVolume}}">
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Restore into a new volume</button>
+      <a href="/backups/jobs/{{.Job.ID}}" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+  {{end}}
+</section>
+{{end}}

@@ -1,0 +1,27 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Backup destinations</h2>
+  <p class="muted" style="font-size:12px;">Where the backups of <a href="/backups">your volumes</a> are written: a SMB (CIFS) share. Wharf keeps the backups in an encrypted <a href="https://restic.net" target="_blank" rel="noopener">restic</a> repository on it, one per host, so the share only ever holds ciphertext. A destination is set up once and used by any number of jobs; the share and repository passwords are write-only and are never shown again, except the repository password, which you can reveal to restore somewhere else.</p>
+  {{if .Rows}}
+  <table>
+    <thead><tr><th>Name</th><th>Share</th><th>SMB</th><th>Used by</th><th></th></tr></thead>
+    <tbody>
+      {{range .Rows}}
+      <tr>
+        <td><a href="/settings/backup-destinations/{{.ID}}">{{.Name}}</a></td>
+        <td><code>{{.Address}}</code></td>
+        <td>{{.Version}}</td>
+        <td>{{if .Jobs}}{{.Jobs}} job(s){{else}}<span class="muted">no job</span>{{end}}</td>
+        <td class="row-actions"><a href="/settings/backup-destinations/{{.ID}}" class="btn btn-ghost btn-sm">Edit</a></td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No destination yet.</p>
+  {{end}}
+  <div class="form-actions" style="margin-top:16px;">
+    <a href="/settings/backup-destinations/new" class="btn btn-primary">Add a destination</a>
+  </div>
+</section>
+{{end}}

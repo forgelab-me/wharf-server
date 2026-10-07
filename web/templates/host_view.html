@@ -11,7 +11,7 @@
     </td></tr>
     <tr><th>Status</th><td><span class="badge status-{{.Host.Status}}">{{.Host.Status}}</span></td></tr>
     <tr><th>Fingerprint</th><td class="muted"><code>{{.Host.CertFingerprint}}</code></td></tr>
-    <tr><th>Last seen</th><td class="muted">{{.Host.LastSeenAt}}</td></tr>
+    <tr><th>Last seen <span class="muted" data-tz></span></th><td class="muted" data-utc>{{.Host.LastSeenAt}}</td></tr>
     <tr><th>Agent version</th><td class="muted">
       {{if .Host.AgentVersion}}{{.Host.AgentVersion}}{{else}}—{{end}}
       {{if .Host.AgentOutdated}}<span class="badge status-pending" title="Latest is {{.LatestAgentVersion}}">update available</span>{{end}}

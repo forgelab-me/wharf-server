@@ -21,19 +21,21 @@
         <a href="/containers" class="{{if eq .Nav "containers"}}active{{end}}">Containers</a>
         <a href="/images" class="{{if eq .Nav "images"}}active{{end}}">Images</a>
         <a href="/volumes" class="{{if eq .Nav "volumes"}}active{{end}}">Volumes</a>
+        {{if eq .Role "admin"}}<a href="/backups" class="{{if eq .Nav "backups"}}active{{end}}">Backups</a>{{end}}
         <a href="/networks" class="{{if eq .Nav "networks"}}active{{end}}">Networks</a>
         {{if eq .Role "admin"}}
         <details class="nav-group" data-key="tools"{{if eq .Nav "secrets-tool"}} open{{end}}>
           <summary class="nav-section">Tools</summary>
           <a href="/tools/secrets" class="{{if eq .Nav "secrets-tool"}}active{{end}}">Encrypt secrets</a>
         </details>
-        <details class="nav-group" data-key="settings"{{if or (eq .Nav "users") (eq .Nav "git-connections") (eq .Nav "secret-providers") (eq .Nav "vuln-scanning") (eq .Nav "authentication") (eq .Nav "registries") (eq .Nav "audit-log") (eq .Nav "backup") (eq .Nav "notifications")}} open{{end}}>
+        <details class="nav-group" data-key="settings"{{if or (eq .Nav "users") (eq .Nav "git-connections") (eq .Nav "secret-providers") (eq .Nav "vuln-scanning") (eq .Nav "authentication") (eq .Nav "registries") (eq .Nav "backup-destinations") (eq .Nav "audit-log") (eq .Nav "backup") (eq .Nav "notifications")}} open{{end}}>
           <summary class="nav-section">Settings</summary>
           <a href="/users" class="{{if eq .Nav "users"}}active{{end}}">Users</a>
           <a href="/settings/authentication" class="{{if eq .Nav "authentication"}}active{{end}}">Authentication</a>
           <a href="/git-connections" class="{{if eq .Nav "git-connections"}}active{{end}}">Git connections</a>
           <a href="/settings/registries" class="{{if eq .Nav "registries"}}active{{end}}">Registry</a>
           <a href="/settings/secret-providers" class="{{if eq .Nav "secret-providers"}}active{{end}}">Secret providers</a>
+          <a href="/settings/backup-destinations" class="{{if eq .Nav "backup-destinations"}}active{{end}}">Backup destinations</a>
           <a href="/settings/vulnerability-scanning" class="{{if eq .Nav "vuln-scanning"}}active{{end}}">Vulnerability scanning</a>
           <a href="/settings/notifications" class="{{if eq .Nav "notifications"}}active{{end}}">Notifications</a>
           <a href="/audit-log" class="{{if eq .Nav "audit-log"}}active{{end}}">Audit log</a>
@@ -570,6 +572,40 @@
       var interval = setInterval(tick, opts.intervalMs || 3000);
       return { stop: function () { clearInterval(interval); } };
     };
+  </script>
+  <script>
+    // Timestamps are stored and rendered by the server in UTC; any element
+    // marked data-utc is rewritten in the browser's own time zone, with the
+    // original UTC value kept as its tooltip.
+    (function () {
+      var re = /^\d{4}-\d\d-\d\d[ T]\d\d:\d\d:\d\d(\.\d+)?(Z|[+-]\d\d:?\d\d)?$/;
+      // [data-tz] labels a column header with the zone its times are shown in.
+      var zone = '', name = '';
+      try {
+        zone = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        var part = new Intl.DateTimeFormat(undefined, { timeZoneName: 'short' })
+          .formatToParts(new Date()).filter(function (p) { return p.type === 'timeZoneName'; })[0];
+        name = part ? part.value : zone;
+      } catch (e) {}
+      document.querySelectorAll('[data-tz]').forEach(function (el) {
+        if (!name) return;
+        el.textContent = '(' + name + ')';
+        el.title = zone;
+      });
+      document.querySelectorAll('[data-utc]').forEach(function (el) {
+        var raw = el.textContent.trim();
+        var m = re.exec(raw);
+        if (!m) return;
+        var iso = raw.replace(' ', 'T') + (m[2] ? '' : 'Z');
+        var d = new Date(iso);
+        if (isNaN(d.getTime())) return;
+        el.title = raw + (m[2] ? '' : ' UTC');
+        el.textContent = d.toLocaleString(undefined, {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+        });
+      });
+    })();
   </script>
 </body>
 </html>

@@ -40,6 +40,7 @@ var auditCategories = []auditCategory{
 	{"backup", "Backup & restore"},
 	{"secrets", "Secrets (encrypt helper, references)"},
 	{"scan", "Vulnerability scanning"},
+	{"volume_backup", "Volume backups"},
 }
 
 // auditRetentionCheckInterval: once a day is plenty of precision for a

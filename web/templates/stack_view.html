@@ -105,11 +105,11 @@
   <h2>History</h2>
   <p class="muted">Every edit (and every restore) is kept here — nothing overwritten is ever gone.</p>
   <table>
-    <thead><tr><th>Saved</th><th></th></tr></thead>
+    <thead><tr><th>Saved <span class="muted" data-tz></span></th><th></th></tr></thead>
     <tbody>
       {{range .Revisions}}
       <tr>
-        <td class="muted">{{.CreatedAt}}</td>
+        <td class="muted" data-utc>{{.CreatedAt}}</td>
         <td class="row-actions">
           <form method="post" action="/stacks/{{$.Stack.ID}}/revisions/{{.ID}}/restore">
             <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">

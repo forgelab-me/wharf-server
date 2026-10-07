@@ -81,6 +81,7 @@ server/
 ├── stats.go               live CPU/mem/disk stats (container + host)
 ├── tunnel.go              the agent-facing WebSocket protocol
 ├── health.go              GET /healthz, the controller's health check
+├── volume_backups.go, volume_backup_runs.go, volume_backup_destinations.go, volume_backup_views.go, backup_protocol.go   volume backups: jobs and their pages, starting and scheduling runs, SMB destinations, what the pages show, the agent protocol
 ├── internal/
 │   ├── store/             main application database (SQLite) — stacks, hosts,
 │   │                      deployments, users, sessions

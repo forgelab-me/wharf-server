@@ -1,0 +1,55 @@
+{{define "content"}}
+<section class="panel">
+  <h2>{{if .Dest}}{{.Dest.Name}} <span class="muted" style="font-size:13px;">SMB share</span>{{else}}New backup destination{{end}}</h2>
+  {{if not .Dest}}<p class="muted" style="font-size:12px;">A SMB (CIFS) share on a NAS or a file server. Use a user and a share that exist only for these backups: Wharf's agents write to it with this user.</p>{{end}}
+  <form method="post" action="{{if .Dest}}/settings/backup-destinations/{{.Dest.ID}}{{else}}/settings/backup-destinations{{end}}">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <div class="form-row"><label>Name *</label><input type="text" name="name" required value="{{.F.Name}}" placeholder="e.g. nas-backups"></div>
+    <div class="form-row"><label>Server *</label><input type="text" name="server" required value="{{.F.Server}}" placeholder="nas.example.lan or 192.168.1.20">
+      <p class="muted" style="font-size:12px;">A host name or an IP address. The Docker daemon of each host resolves it, so it must resolve there.</p></div>
+    <div class="form-row"><label>Share *</label><input type="text" name="share" required value="{{.F.Share}}" placeholder="backups"></div>
+    <div class="form-row"><label>Folder</label><input type="text" name="folder" value="{{.F.Folder}}" placeholder="wharf">
+      <p class="muted" style="font-size:12px;">Optional, inside the share. Each host gets its own repository under it, named after the host's id.</p></div>
+    <div class="form-row"><label>SMB version</label>
+      <select name="version">{{range .Versions}}<option value="{{.}}" {{if eq . $.F.Version}}selected{{end}}>{{.}}</option>{{end}}</select></div>
+    <div class="form-row"><label>User name *</label><input type="text" name="username" required value="{{.F.Username}}" autocomplete="off"></div>
+    <div class="form-row"><label>Domain</label><input type="text" name="domain" value="{{.F.Domain}}" placeholder="optional" autocomplete="off"></div>
+    <div class="form-row"><label>Password {{if not .Dest}}*{{end}}</label>
+      <input type="password" name="password" autocomplete="new-password" {{if not .Dest}}required{{end}} placeholder="{{if .Dest}}set — type to replace{{end}}">
+      <p class="muted" style="font-size:12px;">Write-only. It cannot contain a comma (it would end the mount options).</p></div>
+    {{if not .Dest}}
+    <p class="muted" style="font-size:12px;">On creation Wharf generates the <strong>repository password</strong> that encrypts the backups and shows it once. Without it the backups cannot be read, by anyone.</p>
+    {{end}}
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">{{if .Dest}}Save{{else}}Create{{end}}</button>
+      <a href="/settings/backup-destinations" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+
+  {{if .Dest}}
+  <h3 style="margin-top:24px; font-size:14px;">Check it from a host</h3>
+  <p class="muted" style="font-size:12px;">Mounts the share from the chosen host and writes a file to it. Nothing is changed on the share except that file, removed at once.</p>
+  {{if .Hosts}}
+  <form method="post" action="/settings/backup-destinations/{{.Dest.ID}}/test" class="inline-form" style="display:flex; gap:8px; align-items:center;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <select name="host_id">{{range .Hosts}}<option value="{{.ID}}">{{.Name}}</option>{{end}}</select>
+    <button type="submit" class="btn btn-ghost">Test</button>
+  </form>
+  {{else}}
+  <p class="muted" style="font-size:12px;">No connected host runs an agent that can back up (it needs a recent agent).</p>
+  {{end}}
+
+  <h3 style="margin-top:24px; font-size:14px;">Repository password</h3>
+  <p class="muted" style="font-size:12px;">You need it to restore these backups anywhere other than through this controller. Revealing it is recorded in the audit log.</p>
+  <form method="post" action="/settings/backup-destinations/{{.Dest.ID}}/reveal" class="inline-form">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost">Reveal the repository password</button>
+  </form>
+
+  <form method="post" action="/settings/backup-destinations/{{.Dest.ID}}/delete" data-confirm="Remove this destination? The snapshots already on the share are not deleted." style="margin-top:24px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost" {{if .Jobs}}disabled title="Still used by: {{range $i, $j := .Jobs}}{{if $i}}, {{end}}{{$j}}{{end}}"{{end}}>Remove this destination</button>
+  </form>
+  {{end}}
+</section>
+{{end}}

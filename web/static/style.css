@@ -228,9 +228,9 @@ code {
 
 .badge.mock { background: rgba(224, 179, 77, 0.15); color: var(--warn); text-transform: none; font-weight: 500; }
 
-.badge.status-succeeded, .badge.status-connected { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
-.badge.status-failed, .badge.status-revoked { background: rgba(242, 114, 114, 0.15); color: var(--danger); }
-.badge.status-running, .badge.status-pending { background: rgba(224, 179, 77, 0.15); color: var(--warn); }
+.badge.status-succeeded, .badge.status-success, .badge.status-connected { background: rgba(74, 222, 128, 0.15); color: var(--ok); }
+.badge.status-failed, .badge.status-error, .badge.status-revoked { background: rgba(242, 114, 114, 0.15); color: var(--danger); }
+.badge.status-running, .badge.status-warning, .badge.status-pending { background: rgba(224, 179, 77, 0.15); color: var(--warn); }
 .badge.status-disconnected, .badge.status-unknown, .badge.status-never { background: rgba(124, 143, 163, 0.15); color: var(--text-muted); }
 
 .badge.trigger-webhook { background: rgba(45, 212, 191, 0.15); color: var(--accent); }
@@ -456,6 +456,17 @@ option { background-color: var(--bg-elevated); color: var(--text); }
   border-radius: 6px;
   font-size: 14px;
 }
+.form-row input[type=number] {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+/* A long list of checkboxes (a host's volumes) scrolls instead of stretching the page. */
+.check-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; background: var(--bg-elevated); }
+.check-list label.radio { margin: 4px 0; }
 /* Not grouped with the inputs above: select's own right padding needs
    room for the chevron (cf. the global "select" rule) that a shared
    "padding: 9px 12px" would clobber. */

@@ -1,0 +1,116 @@
+{{define "content"}}
+<section class="panel">
+  <h2>{{if .Existing}}{{.Job.Name}} <span class="muted" style="font-size:13px;">on {{.HostName}}{{if .DestName}} → {{.DestName}}{{end}}</span>{{else}}New backup job{{end}}</h2>
+
+  {{if not .Existing}}
+  <form method="get" action="/backups/jobs/new" class="form-row">
+    <label>Host *</label>
+    <select name="host" onchange="this.form.submit()">
+      <option value="">— pick a host —</option>
+      {{range .Hosts}}<option value="{{.ID}}" {{if eq .ID $.HostID}}selected{{end}}>{{.Name}}</option>{{end}}
+    </select>
+    <p class="muted" style="font-size:12px;">The volumes are listed per host, so the host comes first. It cannot be changed afterwards.</p>
+  </form>
+  {{end}}
+
+  {{if or .Existing .HostID}}
+  <form method="post" action="{{if .Existing}}/backups/jobs/{{.Job.ID}}{{else}}/backups/jobs{{end}}">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    {{if not .Existing}}<input type="hidden" name="host_id" value="{{.HostID}}">{{end}}
+    <div class="form-row"><label>Name *</label><input type="text" name="name" required value="{{.Job.Name}}" placeholder="e.g. nightly-databases"></div>
+    <div class="form-row">
+      <label>Destination *</label>
+      <select name="destination_id">
+        {{range .Destinations}}<option value="{{.ID}}" {{if eq .ID $.Job.DestinationID}}selected{{end}}>{{.Name}}</option>{{end}}
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Volumes *</label>
+      <div class="check-list">
+      {{range .Volumes}}<label class="radio"><input type="checkbox" name="volumes" value="{{.Name}}" {{if .Selected}}checked{{end}}> <code>{{.Name}}</code></label>{{else}}<p class="muted" style="font-size:12px;">This host reports no named volume.</p>{{end}}
+      </div>
+      <p class="muted" style="font-size:12px;">Named volumes only. Bind mounts and anonymous volumes are not backed up.</p>
+    </div>
+    <div class="form-row">
+      <label>Schedule</label>
+      <input type="text" name="schedule" value="{{.Job.Schedule}}" placeholder="0 3 * * *">
+      <p class="muted" style="font-size:12px;">A 5-field cron expression (<code>0 3 * * *</code> is every night at 3:00, controller time). Empty means manual only.</p>
+    </div>
+    <div class="form-row">
+      <label>Consistency</label>
+      <label class="radio"><input type="radio" name="mode" value="live" {{if ne .Job.Mode "stop"}}checked{{end}}> Copy while the containers run</label>
+      <label class="radio"><input type="radio" name="mode" value="stop" {{if eq .Job.Mode "stop"}}checked{{end}}> Stop the containers that use the volumes, copy, start them again</label>
+      <p class="muted" style="font-size:12px;">A database that is writing can give an inconsistent copy when the containers keep running. Stopping them costs a few minutes of downtime and is the safe choice for databases. They are restarted even if the backup fails.</p>
+    </div>
+    <div class="form-row">
+      <label>Keep</label>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <label style="font-size:12px;">last <input type="number" name="keep_last" min="0" max="9999" value="{{if .Job.Retention.KeepLast}}{{.Job.Retention.KeepLast}}{{end}}" style="width:5em;"></label>
+        <label style="font-size:12px;">daily <input type="number" name="keep_daily" min="0" max="9999" value="{{if .Job.Retention.KeepDaily}}{{.Job.Retention.KeepDaily}}{{end}}" style="width:5em;"></label>
+        <label style="font-size:12px;">weekly <input type="number" name="keep_weekly" min="0" max="9999" value="{{if .Job.Retention.KeepWeekly}}{{.Job.Retention.KeepWeekly}}{{end}}" style="width:5em;"></label>
+        <label style="font-size:12px;">monthly <input type="number" name="keep_monthly" min="0" max="9999" value="{{if .Job.Retention.KeepMonthly}}{{.Job.Retention.KeepMonthly}}{{end}}" style="width:5em;"></label>
+      </div>
+      <p class="muted" style="font-size:12px;">Snapshots per volume. All empty keeps every snapshot, forever. A rule that would remove all of them is refused.</p>
+    </div>
+    <div class="form-row"><label class="radio"><input type="checkbox" name="enabled" value="1" {{if .Job.Enabled}}checked{{end}}> Enabled (the schedule runs)</label></div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Save</button>
+      <a href="/backups" class="btn btn-ghost">Cancel</a>
+    </div>
+  </form>
+  {{end}}
+</section>
+
+{{if .Existing}}
+<section class="panel">
+  <h2>Run</h2>
+  {{if eq .RepoState "ready"}}
+  <p><span class="badge status-success">repository ready</span> <span class="muted" style="font-size:12px;">on {{.DestName}} for {{.HostName}}, seen <span data-utc>{{.RepoChecked}}</span></span></p>
+  {{else if eq .RepoState "missing"}}
+  <p class="banner-error">{{.HostName}} has no repository on {{.DestName}} yet, so <strong>backups and restores are blocked</strong> until you initialize it. This is done once per host and destination.</p>
+  {{else}}
+  <p class="muted" style="font-size:12px;">Whether {{.HostName}} already has a repository on {{.DestName}} is not known yet. <strong>Test the destination</strong> to find out, or initialize it if it is new.</p>
+  {{end}}
+  <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+    {{if eq .RepoState "missing"}}
+    <form method="post" action="/backups/jobs/{{.Job.ID}}/init" class="inline-form" data-confirm="Create the encrypted repository for {{.HostName}} on the share? Only do this once, and check the destination's folder first."><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button type="submit" class="btn btn-primary">Initialize the repository</button></form>
+    <button type="button" class="btn btn-ghost" disabled title="Initialize the repository first">Back up now</button>
+    {{else}}
+    <form method="post" action="/backups/jobs/{{.Job.ID}}/run" class="inline-form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button type="submit" class="btn btn-primary">Back up now</button></form>
+    {{end}}
+    <form method="post" action="/backups/jobs/{{.Job.ID}}/test" class="inline-form"><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button type="submit" class="btn btn-ghost">Test the destination from {{.HostName}}</button></form>
+    {{if eq .RepoState "unknown"}}
+    <form method="post" action="/backups/jobs/{{.Job.ID}}/init" class="inline-form" data-confirm="Create the encrypted repository for {{.HostName}} on the share? Only do this once."><input type="hidden" name="csrf_token" value="{{.CSRFToken}}"><button type="submit" class="btn btn-ghost">Initialize the repository</button></form>
+    {{end}}
+    {{if eq .RepoState "missing"}}<button type="button" class="btn btn-ghost" disabled title="There is nothing to restore from yet">Restore…</button>{{else}}<a href="/backups/jobs/{{.Job.ID}}/restore" class="btn btn-ghost">Restore…</a>{{end}}
+  </div>
+  <p class="muted" style="font-size:12px; margin-top:8px;">The repository is created explicitly, once per host and destination, so a mistyped folder never becomes a new empty repository by accident.</p>
+  <form method="post" action="/backups/jobs/{{.Job.ID}}/delete" data-confirm="Remove this job and its history? The snapshots on the destination are kept." style="margin-top:16px;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-ghost">Remove this job</button>
+  </form>
+</section>
+
+{{if .Runs}}
+<section class="panel">
+  <h2>History</h2>
+  <table>
+    <thead><tr><th>Started</th><th>Kind</th><th>Status</th><th>Duration</th><th>Added</th><th>By</th><th>Result</th></tr></thead>
+    <tbody>
+      {{range .Runs}}
+      <tr>
+        <td><a href="/backups/runs/{{.ID}}" data-utc>{{.Started}}</a></td>
+        <td>{{.Kind}}</td>
+        <td><span class="badge status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.Duration}}</td>
+        <td>{{.Added}}</td>
+        <td>{{if .Actor}}{{.Actor}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="muted" style="font-size:12px;">{{.Message}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}
+{{end}}

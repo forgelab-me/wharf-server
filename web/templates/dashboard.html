@@ -14,7 +14,7 @@
   {{if .Deployments}}
   <table>
     <thead>
-      <tr><th>Stack</th><th>Host</th><th>Action</th><th>Status</th><th>Trigger</th><th>When</th></tr>
+      <tr><th>Stack</th><th>Host</th><th>Action</th><th>Status</th><th>Trigger</th><th>When <span class="muted" data-tz></span></th></tr>
     </thead>
     <tbody>
       {{range .Deployments}}
@@ -24,7 +24,7 @@
         <td class="muted">{{.Action}}</td>
         <td><span class="badge status-{{.Status}}">{{.Status}}</span></td>
         <td>{{.Trigger}}</td>
-        <td class="muted">{{.CreatedAt}}</td>
+        <td class="muted" data-utc>{{.CreatedAt}}</td>
       </tr>
       {{end}}
     </tbody>

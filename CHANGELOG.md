@@ -2,6 +2,16 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.0] - 2026-10-07
+
+### Added
+- **Volume backups.** Named Docker volumes are copied to a SMB (CIFS) share, on a cron schedule or with **Back up now**, into an encrypted, deduplicated [restic](https://restic.net) repository: one repository per host, one snapshot per volume. **Settings → Backup destinations** holds the share (the share password and the generated repository password are write-only; an administrator can reveal the repository password, which is audited); **Backups** holds the jobs (host, volumes, schedule, a consistency mode, a retention rule), the history of runs and the restore. A job can copy while the containers run, or stop the containers that use the volumes and start them again (also when the backup fails). Retention keeps the last N and/or N daily, weekly or monthly snapshots of each volume and never removes everything. A restore goes into a **new** volume, never over the original. A failed run sends a notification, and every start is in the audit log (category `volume_backup`, user `backup-schedule` for a scheduled run). It needs agent 0.9.0 or later; the repository is created explicitly, once per host, from the job's page. Wharf remembers whether each host's repository exists (from a test, an initialization or a run): the job's page shows it, hides the initialize button once it is there, and blocks backups and restores, with a clear message and the way out, while it is known to be missing.
+
+[0.19.1] - 2026-10-04
+
+### Fixed
+- Times in the interface are now shown in the browser's own time zone instead of UTC. The controller stores and renders them in UTC, so the audit log, the deployments on the dashboard, a stack's history and the hosts' "Last seen" were hours off for anyone not on UTC. The column header names the zone (for example `(EDT)`, with the full name as a tooltip), and the original UTC value is kept as the tooltip of each time. The container's own log, which has no time zone, stays in UTC: set `TZ` on the container to change it. A container's, an image's and a volume's own "Created" date come from Docker and are unchanged.
+
 [0.19.0] - 2026-10-03
 
 ### Added

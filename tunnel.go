@@ -96,6 +96,9 @@ type tunnelMessage struct {
 	NewPath    string `json:"new_path,omitempty"`
 	Data       string `json:"data,omitempty"`
 
+	// Volume backups (cf. backup_protocol.go).
+	Backup *agentBackupRequest `json:"backup,omitempty"`
+
 	// "command_result" (agent -> controller)
 	OK     bool   `json:"ok,omitempty"`
 	Output string `json:"output,omitempty"`
@@ -150,6 +153,12 @@ func (tc *tunnelConn) sendVolumeCommand(ctx context.Context, action, volumeName,
 // arrives after a timeout still has somewhere to land instead of
 // leaking a blocked goroutine on the read side.
 func (tc *tunnelConn) send(ctx context.Context, msg tunnelMessage) (tunnelMessage, error) {
+	return tc.sendWithin(ctx, msg, 15*time.Second)
+}
+
+// sendWithin is send with the time to wait for the reply set by the caller: a
+// backup test may begin by pulling an image.
+func (tc *tunnelConn) sendWithin(ctx context.Context, msg tunnelMessage, wait time.Duration) (tunnelMessage, error) {
 	id, err := randomHex(8)
 	if err != nil {
 		return tunnelMessage{}, fmt.Errorf("generate request id: %w", err)
@@ -177,7 +186,7 @@ func (tc *tunnelConn) send(ctx context.Context, msg tunnelMessage) (tunnelMessag
 	select {
 	case result := <-reply:
 		return result, nil
-	case <-time.After(15 * time.Second):
+	case <-time.After(wait):
 		return tunnelMessage{}, fmt.Errorf("timed out waiting for agent response")
 	case <-ctx.Done():
 		return tunnelMessage{}, ctx.Err()

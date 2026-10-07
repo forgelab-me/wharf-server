@@ -1,0 +1,46 @@
+{{define "content"}}
+<section class="panel">
+  <h2>{{if eq .Run.Kind "restore"}}Restore{{else}}Backup{{end}} <span class="muted" style="font-size:13px;">{{.Job.Name}} on {{.HostName}}</span></h2>
+  <p>
+    <span class="badge status-{{.Run.Status}}">{{.Run.Status}}</span>
+    <span class="muted" style="font-size:12px;">started <span data-utc>{{.Run.Started}}</span>{{if .Run.Duration}} · {{.Run.Duration}}{{end}}{{if .Run.Actor}} · by {{.Run.Actor}}{{end}}{{if eq .Run.Trigger "schedule"}} · scheduled{{end}}</span>
+  </p>
+  {{if eq .Run.Status "running"}}<p class="muted" style="font-size:12px;">Running on the host. This page refreshes by itself; the agent reports when it is done, and a large volume can take a while.</p>
+  <script>setTimeout(function () { location.reload(); }, 5000);</script>{{end}}
+  {{if .Run.Message}}<p class="{{if eq .Run.Status "error"}}banner-error{{else}}muted{{end}}">{{if .Run.Code}}<code>{{.Run.Code}}</code> {{end}}{{.Run.Message}}</p>{{end}}
+
+  {{if eq .Run.Code "REPO_NOT_INITIALIZED"}}
+  <form method="post" action="/backups/jobs/{{.Job.ID}}/init" data-confirm="Create the encrypted repository for {{.HostName}} on the share? Only do this once, and check the destination's folder first." style="margin:12px 0;">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button type="submit" class="btn btn-primary">Initialize the repository for {{.HostName}}</button>
+    <span class="muted" style="font-size:12px;"> then run the backup again. This is done once per host and destination.</span>
+  </form>
+  {{end}}
+
+  {{if and .Run.Restored (ne .Run.Status "error")}}<p>Restored into the new volume <a href="/volumes"><code>{{.Run.Restored}}</code></a>. The original volume was not touched: point your stack at the new one, or copy what you need from it.</p>{{end}}
+
+  {{if .Run.Volumes}}
+  <table>
+    <thead><tr><th>Volume</th><th>Status</th><th>Snapshot</th><th>Size</th><th>Added</th><th>Files new / changed</th><th>Retention</th><th></th></tr></thead>
+    <tbody>
+      {{range .Run.Volumes}}
+      <tr>
+        <td><code>{{.Volume}}</code></td>
+        <td><span class="badge status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{if .SnapshotID}}<code>{{slice .SnapshotID 0 8}}</code>{{end}}</td>
+        <td>{{if .TotalBytes}}{{.Total}}{{end}}</td>
+        <td>{{if .SnapshotID}}{{.Added}}{{end}}</td>
+        <td>{{if .SnapshotID}}{{.FilesNew}} / {{.FilesChanged}}{{end}}</td>
+        <td class="muted" style="font-size:12px;">{{.Retention}}</td>
+        <td class="muted" style="font-size:12px;">{{.Message}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{end}}
+  <div class="form-actions" style="margin-top:16px;">
+    <a href="/backups/jobs/{{.Job.ID}}" class="btn btn-ghost">Back to the job</a>
+    <a href="/backups" class="btn btn-ghost">All backups</a>
+  </div>
+</section>
+{{end}}

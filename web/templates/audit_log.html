@@ -9,12 +9,12 @@
   {{if .Entries}}
   <table>
     <thead>
-      <tr><th>Time</th><th>User</th><th>Action</th><th>Target</th><th>Detail</th></tr>
+      <tr><th>Time <span class="muted" data-tz></span></th><th>User</th><th>Action</th><th>Target</th><th>Detail</th></tr>
     </thead>
     <tbody>
       {{range .Entries}}
       <tr>
-        <td class="muted">{{.CreatedAt}}</td>
+        <td class="muted" data-utc>{{.CreatedAt}}</td>
         <td>{{.Username}}</td>
         <td><code>{{.Action}}</code></td>
         <td>{{.Target}}</td>

@@ -71,6 +71,35 @@ Browse, edit, upload and download files inside a volume (admin only).
 
 ![Volume browser](screenshots/volume-browse.png)
 
+## Volume backups
+
+### Backups
+Named volumes copied to a SMB share on a schedule: the jobs, and the history of their runs.
+
+![Backups](screenshots/backups.png)
+
+### A job
+Its volumes, schedule, how the containers are treated, the retention rule, whether the repository exists on the share, and the history.
+
+![A backup job](screenshots/backup-job.png)
+
+### A run
+Each volume with its snapshot, its size, what it added to the repository and what retention did.
+
+![A backup run](screenshots/backup-run.png)
+
+### Destinations
+Where the backups go: a SMB share, set up once and used by any number of jobs.
+
+![Backup destinations](screenshots/backup-destinations.png)
+
+![A backup destination](screenshots/backup-destination.png)
+
+### Repository password
+Shown once when a destination is created; an administrator can show it again, which is audited.
+
+![The repository password](screenshots/backup-repo-password.png)
+
 ## Vulnerability scanning
 
 ### Settings

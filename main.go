@@ -49,13 +49,15 @@ type app struct {
 	keys        *keys.Custodian
 	fingerprint string // empreinte de l'identité auto-signée du contrôleur
 	cron        *cron.Cron
-	tunnels     *tunnelRegistry   // connexions agent live, cf. tunnel.go
-	polls       *pollRegistry     // cron.EntryID par stack en polling, cf. poller.go
-	dataDir     string            // cf. backup.go -- where wharf.db/keys.db/identity actually live
-	notifyState *notifyState      // cf. notifications.go -- "already notified" tracking, level-triggered events
-	vuln        *vulnEngine       // cf. vulnscan.go -- image vulnerability scanning
-	resolver    *secrets.Resolver // cf. agent_resolve.go -- secrets.refs.yaml providers
-	bws         *secrets.BwsTool  // cf. secret_tools.go -- the Bitwarden tool, downloaded on request
+	tunnels     *tunnelRegistry                         // connexions agent live, cf. tunnel.go
+	polls       *pollRegistry                           // cron.EntryID par stack en polling, cf. poller.go
+	dataDir     string                                  // cf. backup.go -- where wharf.db/keys.db/identity actually live
+	notifyState *notifyState                            // cf. notifications.go -- "already notified" tracking, level-triggered events
+	vuln        *vulnEngine                             // cf. vulnscan.go -- image vulnerability scanning
+	resolver    *secrets.Resolver                       // cf. agent_resolve.go -- secrets.refs.yaml providers
+	bws         *secrets.BwsTool                        // cf. secret_tools.go -- the Bitwarden tool, downloaded on request
+	volBackups  *volumeBackups                          // cf. volume_backup_runs.go -- schedules of the volume backup jobs
+	agentHook   func(hostID string) (backupAgent, bool) // a test's stand-in for an agent's tunnel, nil in production
 	statsOnce   sync.Once
 	statsC      *statsCollector // cf. stackstats.go -- live figures of the stacks list
 }
@@ -319,7 +321,7 @@ func main() {
 		cacheDir = "/cache"
 	}
 	bws := secrets.NewBwsTool(cacheDir)
-	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), bws: bws,
+	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), bws: bws, volBackups: newVolumeBackups(),
 		resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider(), secrets.BwsProvider(bws))}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
@@ -353,6 +355,9 @@ func main() {
 	}
 	if err := registerVulnScanning(a); err != nil {
 		log.Fatal("register vulnerability scanning: ", err)
+	}
+	if err := registerVolumeBackups(a); err != nil {
+		log.Fatal("register volume backups: ", err)
 	}
 	a.cron.Start()
 	defer a.cron.Stop()
@@ -439,6 +444,26 @@ func main() {
 	mux.HandleFunc("GET /settings/authentication", requireAdmin(a.settingsAuthenticationHandler))
 	mux.HandleFunc("POST /settings/oidc", requireAdmin(a.setOIDCConfigHandler))
 	mux.HandleFunc("POST /settings/oidc/delete", requireAdmin(a.deleteOIDCConfigHandler))
+	mux.HandleFunc("GET /settings/backup-destinations", requireAdmin(a.volumeBackupDestinationsHandler))
+	mux.HandleFunc("GET /settings/backup-destinations/new", requireAdmin(a.volumeBackupDestinationFormHandler))
+	mux.HandleFunc("POST /settings/backup-destinations", requireAdmin(a.createVolumeBackupDestinationHandler))
+	mux.HandleFunc("GET /settings/backup-destinations/{id}", requireAdmin(a.volumeBackupDestinationFormHandler))
+	mux.HandleFunc("POST /settings/backup-destinations/{id}", requireAdmin(a.updateVolumeBackupDestinationHandler))
+	mux.HandleFunc("POST /settings/backup-destinations/{id}/delete", requireAdmin(a.deleteVolumeBackupDestinationHandler))
+	mux.HandleFunc("POST /settings/backup-destinations/{id}/test", requireAdmin(a.testVolumeBackupDestinationHandler))
+	mux.HandleFunc("POST /settings/backup-destinations/{id}/reveal", requireAdmin(a.revealVolumeBackupRepoPasswordHandler))
+	mux.HandleFunc("GET /backups", requireAdmin(a.volumeBackupsHandler))
+	mux.HandleFunc("GET /backups/jobs/new", requireAdmin(a.volumeBackupJobFormHandler))
+	mux.HandleFunc("POST /backups/jobs", requireAdmin(a.saveVolumeBackupJobHandler))
+	mux.HandleFunc("GET /backups/jobs/{id}", requireAdmin(a.volumeBackupJobFormHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}", requireAdmin(a.saveVolumeBackupJobHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}/delete", requireAdmin(a.deleteVolumeBackupJobHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}/run", requireAdmin(a.runVolumeBackupHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}/test", requireAdmin(a.testVolumeBackupJobHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}/init", requireAdmin(a.initVolumeBackupJobHandler))
+	mux.HandleFunc("GET /backups/jobs/{id}/restore", requireAdmin(a.volumeBackupRestoreFormHandler))
+	mux.HandleFunc("POST /backups/jobs/{id}/restore", requireAdmin(a.volumeBackupRestoreHandler))
+	mux.HandleFunc("GET /backups/runs/{id}", requireAdmin(a.volumeBackupRunHandler))
 	mux.HandleFunc("GET /settings/registries", requireAdmin(a.settingsRegistriesHandler))
 	mux.HandleFunc("POST /settings/registries", requireAdmin(a.setRegistryCredentialHandler))
 	mux.HandleFunc("POST /settings/registries/{host}/delete", requireAdmin(a.deleteRegistryCredentialHandler))
@@ -487,6 +512,7 @@ func main() {
 	agentMux.HandleFunc("POST /agent/deployments/{id}/result", a.deploymentResultHandler)
 	agentMux.HandleFunc("POST /agent/decrypt", a.decryptHandler)
 	agentMux.HandleFunc("POST /agent/resolve", a.resolveHandler)
+	agentMux.HandleFunc("POST /agent/backup-runs/{id}/report", a.volumeBackupReportHandler)
 	agentMux.HandleFunc("GET /agent/tunnel", a.tunnelHandler)
 
 	// RequestClientCert (not Require/RequireAndVerify): there is no CA to

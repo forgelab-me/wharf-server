@@ -1,0 +1,58 @@
+{{define "content"}}
+<section class="panel">
+  <h2>Volume backups</h2>
+  <p class="muted" style="font-size:12px;">Named Docker volumes, copied to a <a href="/settings/backup-destinations">SMB destination</a> into an encrypted, deduplicated <a href="https://restic.net" target="_blank" rel="noopener">restic</a> repository, on a schedule or on demand. One snapshot per volume, and a restore always goes into a <strong>new</strong> volume, never over the original.</p>
+  {{if .Jobs}}
+  <table>
+    <thead><tr><th>Job</th><th>Host</th><th>Volumes</th><th>Destination</th><th>Schedule</th><th>Last run</th><th></th></tr></thead>
+    <tbody>
+      {{range .Jobs}}
+      <tr>
+        <td><a href="/backups/jobs/{{.Job.ID}}">{{.Job.Name}}</a>{{if not .Job.Enabled}} <span class="badge status-unknown">off</span>{{end}}</td>
+        <td>{{.HostName}}</td>
+        <td>{{range $i, $v := .Job.Volumes}}{{if $i}}, {{end}}<code>{{$v}}</code>{{end}}</td>
+        <td>{{if .Destination}}{{.Destination}}{{else}}<span class="muted">missing</span>{{end}}</td>
+        <td style="white-space:nowrap;">{{if .Job.Schedule}}<code>{{.Job.Schedule}}</code>{{else}}<span class="muted">manual</span>{{end}}</td>
+        <td>{{if .Last}}<a href="/backups/runs/{{.Last.ID}}"><span class="badge status-{{.Last.Status}}">{{.Last.Status}}</span></a> <span class="muted" style="font-size:12px;" data-utc>{{.Last.Started}}</span>{{else}}<span class="muted">never</span>{{end}}</td>
+        <td class="row-actions" style="white-space:nowrap;">
+          {{if .RepoMissing}}<a href="/backups/jobs/{{.Job.ID}}" class="btn btn-ghost btn-sm" title="This host has no repository on the destination yet">Initialize first</a>{{else}}
+          <form method="post" action="/backups/jobs/{{.Job.ID}}/run" class="inline-form">
+            <input type="hidden" name="csrf_token" value="{{$.CSRFToken}}">
+            <button type="submit" class="btn btn-ghost btn-sm">Back up now</button>
+          </form>{{end}}
+        </td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+  {{else}}
+  <p class="muted">No backup job yet.{{if not .HasDestinations}} Start by adding a <a href="/settings/backup-destinations/new">destination</a>.{{end}}</p>
+  {{end}}
+  <div class="form-actions" style="margin-top:16px;">
+    {{if .HasDestinations}}<a href="/backups/jobs/new" class="btn btn-primary">New job</a>{{else}}<a href="/settings/backup-destinations/new" class="btn btn-primary">Add a destination</a>{{end}}
+  </div>
+</section>
+
+{{if .Runs}}
+<section class="panel">
+  <h2>Recent runs</h2>
+  <table>
+    <thead><tr><th>Started</th><th>Job</th><th>Kind</th><th>Status</th><th>Duration</th><th>Added</th><th>By</th><th>Result</th></tr></thead>
+    <tbody>
+      {{range .Runs}}
+      <tr>
+        <td><a href="/backups/runs/{{.ID}}" data-utc>{{.Started}}</a></td>
+        <td>{{.JobName}}</td>
+        <td>{{.Kind}}</td>
+        <td><span class="badge status-{{.Status}}">{{.Status}}</span></td>
+        <td>{{.Duration}}</td>
+        <td>{{.Added}}</td>
+        <td>{{if .Actor}}{{.Actor}}{{else}}<span class="muted">—</span>{{end}}</td>
+        <td class="muted" style="font-size:12px;">{{.Message}}</td>
+      </tr>
+      {{end}}
+    </tbody>
+  </table>
+</section>
+{{end}}
+{{end}}

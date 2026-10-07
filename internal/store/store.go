@@ -259,6 +259,47 @@ func Open(path string) (*Store, error) {
 		prefixes      TEXT NOT NULL DEFAULT '[]',
 		PRIMARY KEY (stack_id, type)
 	);
+	CREATE TABLE IF NOT EXISTS backup_destinations (
+		id         TEXT PRIMARY KEY,
+		name       TEXT NOT NULL UNIQUE,
+		type       TEXT NOT NULL,
+		config     TEXT NOT NULL DEFAULT '{}',
+		created_at TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE IF NOT EXISTS backup_jobs (
+		id             TEXT PRIMARY KEY,
+		name           TEXT NOT NULL UNIQUE,
+		host_id        TEXT NOT NULL,
+		destination_id TEXT NOT NULL,
+		volumes        TEXT NOT NULL DEFAULT '[]',
+		schedule       TEXT NOT NULL DEFAULT '',
+		mode           TEXT NOT NULL DEFAULT 'live',
+		retention      TEXT NOT NULL DEFAULT '{}',
+		enabled        INTEGER NOT NULL DEFAULT 1,
+		created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+	);
+	CREATE TABLE IF NOT EXISTS backup_runs (
+		id           TEXT PRIMARY KEY,
+		job_id       TEXT NOT NULL,
+		kind         TEXT NOT NULL DEFAULT 'backup',
+		triggered_by TEXT NOT NULL DEFAULT 'manual',
+		actor        TEXT NOT NULL DEFAULT '',
+		status       TEXT NOT NULL DEFAULT 'running',
+		code         TEXT NOT NULL DEFAULT '',
+		message      TEXT NOT NULL DEFAULT '',
+		results      TEXT NOT NULL DEFAULT '[]',
+		restored     TEXT NOT NULL DEFAULT '',
+		started_at   TEXT NOT NULL DEFAULT (datetime('now')),
+		finished_at  TEXT
+	);
+	CREATE INDEX IF NOT EXISTS backup_runs_job ON backup_runs (job_id, started_at);
+	CREATE TABLE IF NOT EXISTS backup_repos (
+		destination_id TEXT NOT NULL,
+		host_id        TEXT NOT NULL,
+		initialized    INTEGER NOT NULL,
+		checked_at     TEXT NOT NULL DEFAULT (datetime('now')),
+		PRIMARY KEY (destination_id, host_id)
+	);
 	CREATE TABLE IF NOT EXISTS image_scans (
 		scanner          TEXT NOT NULL,
 		repository       TEXT NOT NULL,
