@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.2] - 2026-10-07
+
+### Changed
+- Volume backups now need agent 0.9.1 or later, not 0.9.0. Agent 0.9.0 backs up volumes but does not report their labels, so the stacks and label rules of a job (0.20.1) selected nothing on it, and a job that mixed a stack with ticked volumes backed up only the ticked ones without saying so. A host on an older agent is now refused with a message that says to update it.
+
 [0.20.1] - 2026-10-07
 
 ### Added

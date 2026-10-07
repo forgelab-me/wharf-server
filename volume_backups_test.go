@@ -71,7 +71,7 @@ func newVBFixture(t *testing.T) *vbFixture {
 		t.Fatal(err)
 	}
 	st.ApproveHost(host.ID, "admin")
-	st.SetHostAgentVersion(host.ID, "0.9.0")
+	st.SetHostAgentVersion(host.ID, "0.9.1")
 	anonymous := strings.Repeat("ab", 32)
 	if err := st.ReplaceHostVolumes(host.ID, []store.HostVolume{
 		{HostID: host.ID, Name: "blog_data", Driver: "local"}, {HostID: host.ID, Name: "db", Driver: "local"},
@@ -376,9 +376,11 @@ func TestARunThatCannotStartIsRecordedAndSaysWhy(t *testing.T) {
 
 	// an agent too old
 	f.agent.startErr = nil
-	f.a.store.SetHostAgentVersion(f.host.ID, "0.8.0")
-	if _, err := f.a.startVolumeBackup(job, "manual", "alice"); err == nil || !strings.Contains(err.Error(), "0.9.0") {
-		t.Errorf("an old agent: %v", err)
+	for _, old := range []string{"0.8.0", "0.9.0"} {
+		f.a.store.SetHostAgentVersion(f.host.ID, old)
+		if _, err := f.a.startVolumeBackup(job, "manual", "alice"); err == nil || !strings.Contains(err.Error(), "0.9.1") {
+			t.Errorf("an old agent %s: %v", old, err)
+		}
 	}
 	// a development build is let through
 	f.a.store.SetHostAgentVersion(f.host.ID, "dev")

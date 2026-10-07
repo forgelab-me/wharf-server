@@ -64,8 +64,10 @@ type agentRunReport struct {
 	} `json:"volumes,omitempty"`
 }
 
-// minAgentForBackups is the first agent that knows the backup actions.
-const minAgentForBackups = "0.9.0"
+// minAgentForBackups is the first agent that knows the backup actions and
+// reports the volumes' labels (0.9.0 backs up, but a stack or a label rule
+// would silently select nothing on it).
+const minAgentForBackups = "0.9.1"
 
 // agentCannotBackUp: an agent that never reported its version predates version
 // reporting; a non-release build ("dev") is let through, as for secret references.
