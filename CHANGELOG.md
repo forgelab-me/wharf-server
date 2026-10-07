@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.4] - 2026-10-07
+
+### Changed
+- Checkboxes use the interface's colours instead of the browser's blue: a teal tick, a dash for a stack that is only partly ticked, a clearer hover and focus. The switches are unchanged.
+
 [0.20.3] - 2026-10-07
 
 ### Changed
