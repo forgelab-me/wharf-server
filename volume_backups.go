@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"net/http"
 	"sort"
 	"strconv"
@@ -20,7 +22,53 @@ type jobRow struct {
 	HostName    string
 	Destination string
 	Last        *runView
-	RepoMissing bool // known to have no repository: a run would be refused
+	RepoMissing bool     // known to have no repository: a run would be refused
+	Selected    []string // the volumes the job covers now
+}
+
+// treeState is what the volume tree starts from: what the job selects.
+type treeState struct {
+	Stacks   []string `json:"stacks"`
+	Picked   []string `json:"picked"`
+	Excluded []string `json:"excluded"`
+	Rules    []string `json:"rules"`
+}
+
+func nonNil(l []string) []string {
+	if l == nil {
+		return []string{}
+	}
+	return l
+}
+
+func nonNilChoices(l []volumeChoice) []volumeChoice {
+	if l == nil {
+		return []volumeChoice{}
+	}
+	for i := range l {
+		if l[i].Labels == nil {
+			l[i].Labels = map[string]string{}
+		}
+	}
+	return l
+}
+
+// selectionSummary is what the audit log says a job selects: names, never anything secret.
+func selectionSummary(j store.BackupJob) string {
+	var parts []string
+	if len(j.Volumes) > 0 {
+		parts = append(parts, "volumes "+strings.Join(j.Volumes, ", "))
+	}
+	if len(j.Stacks) > 0 {
+		parts = append(parts, "stacks "+strings.Join(j.Stacks, ", "))
+	}
+	if len(j.LabelRules) > 0 {
+		parts = append(parts, "labels "+strings.Join(j.LabelRules, ", "))
+	}
+	if len(j.Excluded) > 0 {
+		parts = append(parts, "left out "+strings.Join(j.Excluded, ", "))
+	}
+	return strings.Join(parts, "; ")
 }
 
 func (a *app) hostName(id string) string {
@@ -52,7 +100,7 @@ func (a *app) volumeBackupsHandler(w http.ResponseWriter, r *http.Request) {
 	rows := make([]jobRow, 0, len(jobs))
 	for _, j := range jobs {
 		state, _ := a.repoState(j.DestinationID, j.HostID)
-		rows = append(rows, jobRow{Job: j, HostName: a.hostName(j.HostID), Destination: destName[j.DestinationID], Last: last[j.ID], RepoMissing: state == "missing"})
+		rows = append(rows, jobRow{Job: j, HostName: a.hostName(j.HostID), Destination: destName[j.DestinationID], Last: last[j.ID], RepoMissing: state == "missing", Selected: a.resolveJobVolumes(j).Names()})
 	}
 	render(w, r, "layout", "volume_backups.html", map[string]any{
 		"Title": "Backups", "Nav": "backups", "Jobs": rows, "Runs": views, "HasDestinations": len(dests) > 0,
@@ -76,31 +124,34 @@ func (a *app) jobFormData(job *store.BackupJob, hostID string) (map[string]any, 
 	if job != nil {
 		hostID = job.HostID
 	}
-	selected := map[string]bool{}
-	var volumes []string
+	// The tree: the host's named volumes with their labels, plus what the job ticked that the
+	// host no longer reports (so it can still be unticked), and what the job selects.
+	volumes := hostVolumeChoices(vols, hostID)
+	state := treeState{Stacks: []string{}, Picked: []string{}, Excluded: []string{}, Rules: []string{}}
 	if job != nil {
-		for _, v := range job.Volumes {
-			selected[v] = true
+		state = treeState{Stacks: nonNil(job.Stacks), Picked: nonNil(job.Volumes), Excluded: nonNil(job.Excluded), Rules: nonNil(job.LabelRules)}
+		known := map[string]bool{}
+		for _, v := range volumes {
+			known[v.Name] = true
+		}
+		for _, name := range append(append([]string{}, job.Volumes...), job.Excluded...) {
+			if !known[name] {
+				known[name] = true
+				volumes = append(volumes, volumeChoice{Name: name, Labels: map[string]string{}})
+			}
 		}
 	}
-	volumes = namedVolumes(vols, hostID)
-	for v := range selected { // a volume that was chosen and has since gone is still listed, so it can be unchecked
-		if !contains(volumes, v) {
-			volumes = append(volumes, v)
+	names := map[string]string{}
+	if stacks, err := a.store.ListStacks(); err == nil {
+		for _, st := range stacks {
+			names[st.ID] = st.Name
 		}
 	}
-	sort.Strings(volumes)
-	type volOption struct {
-		Name     string
-		Selected bool
-	}
-	options := make([]volOption, 0, len(volumes))
-	for _, v := range volumes {
-		options = append(options, volOption{Name: v, Selected: selected[v]})
-	}
-	data := map[string]any{"Nav": "backups", "Hosts": choices, "HostID": hostID, "HostName": a.hostName(hostID), "Destinations": dests, "Volumes": options}
+	tree, _ := json.Marshal(map[string]any{"volumes": nonNilChoices(volumes), "state": state, "names": names})
+	data := map[string]any{"Nav": "backups", "Hosts": choices, "HostID": hostID, "HostName": a.hostName(hostID), "Destinations": dests, "TreeJSON": template.JS(tree)}
 	if job != nil {
 		data["Job"] = *job
+		data["LabelRules"] = strings.Join(job.LabelRules, "\n")
 	} else {
 		data["Job"] = store.BackupJob{Mode: "live", Enabled: true}
 	}
@@ -161,16 +212,47 @@ func (a *app) jobFromForm(r *http.Request, existing *store.BackupJob) (store.Bac
 
 	r.ParseForm()
 	vols, _ := a.store.ListHostVolumes()
-	known := namedVolumes(vols, job.HostID)
-	job.Volumes = nil
+	choices := hostVolumeChoices(vols, job.HostID)
+	known, projects := map[string]bool{}, map[string]bool{}
+	for _, c := range choices {
+		known[c.Name] = true
+		if c.Project != "" {
+			projects[c.Project] = true
+		}
+	}
+	const maxPicks = 500
+	job.Volumes, job.Stacks, job.Excluded = nil, nil, nil
 	for _, v := range r.Form["volumes"] {
-		if !contains(known, v) && !(existing != nil && contains(existing.Volumes, v)) {
+		if !known[v] && !(existing != nil && contains(existing.Volumes, v)) {
 			return job, fmt.Errorf("%q is not a named volume of this host", v)
 		}
 		job.Volumes = append(job.Volumes, v)
 	}
-	if len(job.Volumes) == 0 {
-		return job, errors.New("pick at least one volume")
+	for _, s := range r.Form["stacks"] {
+		if !projectNameRe.MatchString(s) {
+			return job, fmt.Errorf("%q is not a stack name", s)
+		}
+		if !projects[s] && !(existing != nil && contains(existing.Stacks, s)) {
+			return job, fmt.Errorf("this host has no volume of the stack %q", s)
+		}
+		job.Stacks = append(job.Stacks, s)
+	}
+	for _, v := range r.Form["excluded"] {
+		if !safeVolumeName.MatchString(v) {
+			return job, fmt.Errorf("%q is not a volume name", v)
+		}
+		job.Excluded = append(job.Excluded, v)
+	}
+	if len(job.Volumes) > maxPicks || len(job.Stacks) > maxPicks || len(job.Excluded) > maxPicks {
+		return job, errors.New("too many volumes selected")
+	}
+	rules, err := parseLabelRules(r.FormValue("label_rules"))
+	if err != nil {
+		return job, err
+	}
+	job.LabelRules = rules
+	if len(job.Volumes)+len(job.Stacks)+len(job.LabelRules) == 0 {
+		return job, errors.New("pick at least one volume, one stack, or a label")
 	}
 
 	job.Schedule = strings.TrimSpace(r.FormValue("schedule"))
@@ -194,7 +276,6 @@ func (a *app) jobFromForm(r *http.Request, existing *store.BackupJob) (store.Bac
 		}
 		return n, nil
 	}
-	var err error
 	if job.Retention.KeepLast, err = ret("keep_last"); err != nil {
 		return job, err
 	}
@@ -239,13 +320,13 @@ func (a *app) saveVolumeBackupJobHandler(w http.ResponseWriter, r *http.Request)
 			redirectWithError(w, r, back, "could not create the job (name already taken?)")
 			return
 		}
-		a.audit(r, "volume_backup.job_create", job.Name, strings.Join(job.Volumes, ", "))
+		a.audit(r, "volume_backup.job_create", job.Name, selectionSummary(job))
 	} else {
 		if err := a.store.UpdateBackupJob(job); err != nil {
 			redirectWithError(w, r, back, "could not save the job (name already taken?)")
 			return
 		}
-		a.audit(r, "volume_backup.job_update", job.Name, strings.Join(job.Volumes, ", "))
+		a.audit(r, "volume_backup.job_update", job.Name, selectionSummary(job))
 	}
 	if err := registerVolumeBackup(a, job); err != nil {
 		redirectWithError(w, r, "/backups/jobs/"+job.ID, "saved, but the schedule could not be registered: "+err.Error())
@@ -372,16 +453,17 @@ func (a *app) volumeBackupRestoreFormHandler(w http.ResponseWriter, r *http.Requ
 		http.NotFound(w, r)
 		return
 	}
+	restorable := a.restorableVolumes(job)
 	volume := r.URL.Query().Get("volume")
-	if volume == "" && len(job.Volumes) > 0 {
-		volume = job.Volumes[0]
+	if volume == "" && len(restorable) > 0 {
+		volume = restorable[0]
 	}
-	if !contains(job.Volumes, volume) {
+	if !contains(restorable, volume) {
 		http.NotFound(w, r)
 		return
 	}
 	data := map[string]any{"Title": "Restore " + volume, "Nav": "backups", "Job": job, "Volume": volume,
-		"NewVolume": volume + "-restored", "Volumes": job.Volumes}
+		"NewVolume": volume + "-restored", "Volumes": restorable}
 
 	req, err := a.requestForHost(job.DestinationID, job.HostID)
 	if err == nil {
@@ -428,7 +510,7 @@ func (a *app) volumeBackupRestoreHandler(w http.ResponseWriter, r *http.Request)
 	newVolume := strings.TrimSpace(r.FormValue("new_volume"))
 	snapshot := strings.TrimSpace(r.FormValue("snapshot"))
 	back := "/backups/jobs/" + job.ID + "/restore?volume=" + volume
-	if !contains(job.Volumes, volume) {
+	if !contains(a.restorableVolumes(job), volume) {
 		http.NotFound(w, r)
 		return
 	}

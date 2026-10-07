@@ -25,12 +25,153 @@
       </select>
     </div>
     <div class="form-row">
-      <label>Volumes *</label>
-      <div class="check-list">
-      {{range .Volumes}}<label class="radio"><input type="checkbox" name="volumes" value="{{.Name}}" {{if .Selected}}checked{{end}}> <code>{{.Name}}</code></label>{{else}}<p class="muted" style="font-size:12px;">This host reports no named volume.</p>{{end}}
+      <label>Stacks and volumes *</label>
+      <p class="muted" style="font-size:12px;">Tick a stack to take all its volumes, now and later. Tick volumes one by one to fix the list. Untick a volume under a ticked stack to leave it out of this job. Named volumes only: bind mounts and anonymous volumes are not backed up.</p>
+      <div style="margin:4px 0;">
+        <button type="button" class="btn btn-ghost btn-sm" id="vt-expand">Expand all</button>
+        <button type="button" class="btn btn-ghost btn-sm" id="vt-collapse">Collapse all</button>
       </div>
-      <p class="muted" style="font-size:12px;">Named volumes only. Bind mounts and anonymous volumes are not backed up.</p>
+      <div class="vtree" id="vtree"></div>
+      <div id="vt-inputs"></div>
     </div>
+    <div class="form-row">
+      <label>Also every volume with one of these labels</label>
+      <textarea name="label_rules" id="vt-rules" rows="3" spellcheck="false" placeholder="wharf.backup=nightly">{{.LabelRules}}</textarea>
+      <p class="muted" style="font-size:12px;">One per line: <code>wharf.backup</code> (any value) or <code>wharf.backup=nightly</code> (this value). A volume that matches any line is taken, and is added to the job when it appears. Labels go in a compose file under the volume (<code>labels:</code>); Docker does not change the labels of a volume that already exists, so a new one has to be created with them.</p>
+    </div>
+    <div class="vpreview" id="vt-preview" aria-live="polite"></div>
+    <script type="application/json" id="vt-data">{{.TreeJSON}}</script>
+    <script>
+    (function () {
+      var data = JSON.parse(document.getElementById('vt-data').textContent);
+      var vols = data.volumes, names = data.names || {};
+      var stackOn = {}, picked = {}, excl = {}, open = {};
+      data.state.stacks.forEach(function (s) { stackOn[s] = true; });
+      data.state.picked.forEach(function (v) { picked[v] = true; });
+      data.state.excluded.forEach(function (v) { excl[v] = true; });
+      var rulesEl = document.getElementById('vt-rules');
+      var tree = document.getElementById('vtree'), inputs = document.getElementById('vt-inputs'), preview = document.getElementById('vt-preview');
+
+      function el(tag, attrs, kids) {
+        var e = document.createElement(tag);
+        Object.keys(attrs || {}).forEach(function (k) {
+          if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]);
+        });
+        (kids || []).forEach(function (c) { if (c) e.appendChild(c); });
+        return e;
+      }
+      function chip(text, cls) { return el('span', { 'class': 'vchip ' + (cls || ''), text: text }); }
+      function rules() { return rulesEl.value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean); }
+      function ruleMatches(rule, labels) {
+        var i = rule.indexOf('='), k = i < 0 ? rule : rule.slice(0, i), v = i < 0 ? null : rule.slice(i + 1);
+        return Object.prototype.hasOwnProperty.call(labels, k) && (v === null || labels[k] === v);
+      }
+      function why(v) {
+        var w = [];
+        if (picked[v.n]) w.push('ticked');
+        if (v.p && stackOn[v.p]) w.push('stack ' + v.p);
+        rules().forEach(function (r) { if (ruleMatches(r, v.l)) w.push('label ' + r); });
+        return w;
+      }
+      function included(v) { return !excl[v.n] && why(v).length > 0; }
+
+      function groups() {
+        var by = {}, order = [];
+        vols.forEach(function (v) { if (!(v.p in by)) { by[v.p] = []; order.push(v.p); } by[v.p].push(v); });
+        Object.keys(stackOn).forEach(function (p) { if (stackOn[p] && !(p in by)) { by[p] = []; order.push(p); } });
+        order.sort(function (a, b) { return a === '' ? 1 : b === '' ? -1 : a < b ? -1 : a > b ? 1 : 0; });
+        return order.map(function (p) { return { p: p, vs: by[p] }; });
+      }
+      function isOpen(g) {
+        if (g.p in open) return open[g.p];
+        return g.p === '' || stackOn[g.p] || g.vs.some(function (v) { return picked[v.n] || excl[v.n]; });
+      }
+
+      function draw() {
+        tree.textContent = '';
+        groups().forEach(function (g) {
+          var on = g.p !== '' && stackOn[g.p];
+          var cnt = g.vs.filter(included).length, ex = g.vs.filter(function (v) { return excl[v.n]; }).length;
+          var op = isOpen(g);
+          var toggle = el('button', { type: 'button', 'class': 'vt-toggle', 'aria-label': 'Show or hide the volumes of ' + (g.p || 'volumes without a stack') });
+          toggle.appendChild(el('span', { text: op ? '▾' : '▸' }));
+          toggle.onclick = function () { open[g.p] = !op; draw(); };
+          var head = el('div', { 'class': 'vt-stack' }, [toggle]);
+          if (g.p !== '') {
+            var box = el('input', { type: 'checkbox' });
+            box.checked = on && !ex;
+            box.indeterminate = (on && ex > 0) || (!on && cnt > 0);
+            box.onchange = function () {
+              var turnOn = !stackOn[g.p] || g.vs.some(function (v) { return excl[v.n]; });
+              stackOn[g.p] = turnOn;
+              g.vs.forEach(function (v) { delete excl[v.n]; });
+              if (!turnOn) delete stackOn[g.p];
+              update();
+            };
+            head.appendChild(box);
+          }
+          var title = g.p === '' ? 'Without a stack' : (names[g.p] && names[g.p] !== g.p ? names[g.p] + ' (' + g.p + ')' : g.p);
+          head.appendChild(el('strong', { text: title }));
+          head.appendChild(el('span', { 'class': 'muted', text: cnt + ' of ' + g.vs.length }));
+          if (on && !ex) head.appendChild(chip('whole stack, new volumes included', 'accent'));
+          if (on && ex) head.appendChild(chip('whole stack except ' + ex, 'warn'));
+          if (on && g.vs.length === 0) head.appendChild(el('span', { 'class': 'muted', text: 'no volume at the moment' }));
+          tree.appendChild(head);
+          if (op && g.vs.length) {
+            var kids = el('div', { 'class': 'vt-kids' });
+            g.vs.forEach(function (v) {
+              var cb = el('input', { type: 'checkbox' });
+              cb.checked = included(v);
+              cb.onchange = function () {
+                if (cb.checked) { delete excl[v.n]; if (!why(v).length) picked[v.n] = true; }
+                else { delete picked[v.n]; if (why(v).length) excl[v.n] = true; }
+                update();
+              };
+              var code = el('code', { text: v.n });
+              if (excl[v.n]) code.className = 'vt-left-out';
+              var row = el('label', { 'class': 'vt-vol' }, [cb, code]);
+              Object.keys(v.l).filter(function (k) { return k !== 'com.docker.compose.project' && k !== 'com.docker.compose.volume' && k !== 'com.docker.compose.version'; })
+                .sort().forEach(function (k) { row.appendChild(chip(k + '=' + v.l[k], 'plain')); });
+              kids.appendChild(row);
+            });
+            tree.appendChild(kids);
+          }
+        });
+        if (!vols.length && !Object.keys(stackOn).length) tree.appendChild(el('p', { 'class': 'muted', text: 'This host reports no named volume.' }));
+      }
+
+      function sync() {
+        inputs.textContent = '';
+        function hidden(name, value) { inputs.appendChild(el('input', { type: 'hidden', name: name, value: value })); }
+        Object.keys(picked).forEach(function (v) { hidden('volumes', v); });
+        Object.keys(stackOn).forEach(function (s) { hidden('stacks', s); });
+        Object.keys(excl).forEach(function (v) { hidden('excluded', v); });
+      }
+
+      function showPreview() {
+        preview.textContent = '';
+        var rows = vols.filter(included), left = vols.filter(function (v) { return excl[v.n]; });
+        Object.keys(picked).forEach(function (n) { if (!vols.some(function (v) { return v.n === n; }) && !excl[n]) rows.push({ n: n, p: '', l: {}, gone: true }); });
+        preview.appendChild(el('strong', { text: rows.length ? 'Backed up now: ' + rows.length + (rows.length > 1 ? ' volumes' : ' volume') : 'Backed up now: nothing' }));
+        if (!rows.length) {
+          preview.appendChild(el('p', { 'class': 'vt-warn', text: 'No volume matches. A run would stop with an error, never a silent success.' }));
+          return;
+        }
+        rows.forEach(function (v) {
+          var reasons = el('span', { 'class': 'vt-why' });
+          (v.gone ? ['ticked, no longer on the host'] : why(v)).forEach(function (w) { reasons.appendChild(chip(w, 'accent')); });
+          preview.appendChild(el('div', { 'class': 'vt-row' }, [el('code', { text: v.n }), reasons]));
+        });
+        if (left.length) preview.appendChild(el('div', { 'class': 'vt-row muted', text: 'Left out: ' + left.map(function (v) { return v.n; }).join(', ') }));
+      }
+
+      function update() { draw(); sync(); showPreview(); }
+      rulesEl.addEventListener('input', update);
+      document.getElementById('vt-expand').onclick = function () { groups().forEach(function (g) { open[g.p] = true; }); draw(); };
+      document.getElementById('vt-collapse').onclick = function () { groups().forEach(function (g) { open[g.p] = false; }); draw(); };
+      update();
+    })();
+    </script>
     <div class="form-row">
       <label>Schedule</label>
       <input type="text" name="schedule" value="{{.Job.Schedule}}" placeholder="0 3 * * *">

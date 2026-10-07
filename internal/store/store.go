@@ -8,6 +8,7 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -372,6 +373,10 @@ func Open(path string) (*Store, error) {
 		{"host_containers", "image_id"},
 		{"host_images", "digest"},
 		{"image_scans", "notice"},
+		{"host_volumes", "labels"},
+		{"backup_jobs", "stacks"},
+		{"backup_jobs", "excluded"},
+		{"backup_jobs", "label_rules"},
 	} {
 		if _, err := db.Exec(`ALTER TABLE ` + m.table + ` ADD COLUMN ` + m.column + ` TEXT NOT NULL DEFAULT ''`); err != nil && !strings.Contains(err.Error(), "duplicate column name") {
 			db.Close()
@@ -1438,7 +1443,8 @@ type HostVolume struct {
 	HostID   string
 	Name     string
 	Driver   string
-	HostName string // joined in from hosts, only set by ListHostVolumes
+	Labels   map[string]string // as Docker reports them, cf. the agent's volume_labels.go
+	HostName string            // joined in from hosts, only set by ListHostVolumes
 }
 
 // ReplaceHostVolumes swaps in a host's full volume snapshot -- same
@@ -1454,9 +1460,14 @@ func (s *Store) ReplaceHostVolumes(hostID string, rows []HostVolume) error {
 		return fmt.Errorf("replace host volumes %q: clear old: %w", hostID, err)
 	}
 	for _, v := range rows {
+		labels := ""
+		if len(v.Labels) > 0 {
+			raw, _ := json.Marshal(v.Labels)
+			labels = string(raw)
+		}
 		_, err := tx.Exec(
-			`INSERT INTO host_volumes (host_id, name, driver, updated_at) VALUES (?, ?, ?, datetime('now'))`,
-			hostID, v.Name, v.Driver,
+			`INSERT INTO host_volumes (host_id, name, driver, labels, updated_at) VALUES (?, ?, ?, ?, datetime('now'))`,
+			hostID, v.Name, v.Driver, labels,
 		)
 		if err != nil {
 			return fmt.Errorf("replace host volumes %q: insert %q: %w", hostID, v.Name, err)
@@ -1467,7 +1478,7 @@ func (s *Store) ReplaceHostVolumes(hostID string, rows []HostVolume) error {
 
 func (s *Store) ListHostVolumes() ([]HostVolume, error) {
 	rows, err := s.db.Query(
-		`SELECT hv.host_id, hv.name, hv.driver, h.name
+		`SELECT hv.host_id, hv.name, hv.driver, hv.labels, h.name
 		 FROM host_volumes hv JOIN hosts h ON h.id = hv.host_id
 		 ORDER BY hv.name`,
 	)
@@ -1479,8 +1490,12 @@ func (s *Store) ListHostVolumes() ([]HostVolume, error) {
 	var out []HostVolume
 	for rows.Next() {
 		var v HostVolume
-		if err := rows.Scan(&v.HostID, &v.Name, &v.Driver, &v.HostName); err != nil {
+		var labels string
+		if err := rows.Scan(&v.HostID, &v.Name, &v.Driver, &labels, &v.HostName); err != nil {
 			return nil, fmt.Errorf("scan host volume: %w", err)
+		}
+		if labels != "" {
+			_ = json.Unmarshal([]byte(labels), &v.Labels)
 		}
 		out = append(out, v)
 	}

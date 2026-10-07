@@ -83,6 +83,11 @@ Its volumes, schedule, how the containers are treated, the retention rule, wheth
 
 ![A backup job](screenshots/backup-job.png)
 
+### Choosing the volumes
+Stacks with their volumes in a tree, label rules, and a preview of what the job covers and why.
+
+![Choosing the volumes of a backup job](screenshots/backup-volumes.png)
+
 ### A run
 Each volume with its snapshot, its size, what it added to the repository and what retention did.
 

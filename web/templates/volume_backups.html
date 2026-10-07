@@ -10,7 +10,7 @@
       <tr>
         <td><a href="/backups/jobs/{{.Job.ID}}">{{.Job.Name}}</a>{{if not .Job.Enabled}} <span class="badge status-unknown">off</span>{{end}}</td>
         <td>{{.HostName}}</td>
-        <td>{{range $i, $v := .Job.Volumes}}{{if $i}}, {{end}}<code>{{$v}}</code>{{end}}</td>
+        <td>{{range $i, $v := .Selected}}{{if $i}}, {{end}}<code>{{$v}}</code>{{else}}<span class="muted">none right now</span>{{end}}</td>
         <td>{{if .Destination}}{{.Destination}}{{else}}<span class="muted">missing</span>{{end}}</td>
         <td style="white-space:nowrap;">{{if .Job.Schedule}}<code>{{.Job.Schedule}}</code>{{else}}<span class="muted">manual</span>{{end}}</td>
         <td>{{if .Last}}<a href="/backups/runs/{{.Last.ID}}"><span class="badge status-{{.Last.Status}}">{{.Last.Status}}</span></a> <span class="muted" style="font-size:12px;" data-utc>{{.Last.Started}}</span>{{else}}<span class="muted">never</span>{{end}}</td>

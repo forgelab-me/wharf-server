@@ -8,7 +8,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -135,10 +134,7 @@ func (a *app) overlapsRunning(job store.BackupJob, volumes []string) (string, er
 		if err != nil || other.HostID != job.HostID {
 			continue
 		}
-		busy := map[string]bool{}
-		for _, v := range other.Volumes {
-			busy[v] = true
-		}
+		busy := set(a.resolveJobVolumes(other).Names())
 		for _, v := range volumes {
 			if busy[v] {
 				return v, nil
@@ -180,9 +176,13 @@ func (a *app) startVolumeAction(job store.BackupJob, kind, trigger, actor, snaps
 		return run, err
 	}
 
-	volumes := job.Volumes
+	// what a job covers is worked out now, from what the host reports: a volume that
+	// appeared since the job was saved is taken, one that is left out is not
+	volumes := a.resolveJobVolumes(job).Names()
 	if kind == "restore" {
 		volumes = []string{volume}
+	} else if len(volumes) == 0 {
+		return fail("VALIDATION", errors.New(emptySelectionMessage(job)))
 	}
 	if v, err := a.overlapsRunning(job, volumes); err != nil {
 		return store.BackupRun{}, err
@@ -218,7 +218,7 @@ func (a *app) startVolumeAction(job store.BackupJob, kind, trigger, actor, snaps
 		action = "backup_restore"
 		req.Snapshot, req.Volume, req.NewVolume = snapshot, volume, newVolume
 	} else {
-		req.Volumes, req.Mode = job.Volumes, job.Mode
+		req.Volumes, req.Mode = volumes, job.Mode
 		req.Retention = agentRetention(job.Retention)
 	}
 	if err := a.store.CreateBackupRun(run); err != nil {
@@ -380,19 +380,6 @@ func giveUpOnLostRuns(a *app) {
 }
 
 // ---- small helpers shared by the pages
-
-// namedVolumes keeps the volumes of a host that a person created: Docker's
-// anonymous volumes (a 64-character hash) and the temporary share volumes are not.
-func namedVolumes(vols []store.HostVolume, hostID string) []string {
-	var out []string
-	for _, v := range vols {
-		if v.HostID != hostID || v.Driver != "local" || isAnonymousVolume(v.Name) || strings.HasPrefix(v.Name, "wharf-bk-") {
-			continue
-		}
-		out = append(out, v.Name)
-	}
-	return out
-}
 
 func isAnonymousVolume(name string) bool {
 	if len(name) != 64 {

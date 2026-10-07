@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.1] - 2026-10-07
+
+### Added
+- **A backup job chooses its volumes in a tree.** The host's stacks are listed with their volumes (a stack is the Compose project of a volume): tick a stack to take all its volumes, now and later; tick volumes one by one; or add label rules (`wharf.backup` for any value, `wharf.backup=nightly` for one; a volume that matches any line is taken). Unticking a volume under a ticked stack leaves it out of that job, whatever else selects it. A live preview lists what the job covers and why, and the volumes are worked out again at every run, so a volume created with a matching label is backed up without touching the job. A job that selects no volume at that moment fails with a clear error instead of succeeding empty, and a restore also offers volumes that were backed up and have since been removed. Needs agent 0.9.0, which reports the volumes' labels.
+
 [0.20.0] - 2026-10-07
 
 ### Added

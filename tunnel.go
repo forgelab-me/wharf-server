@@ -55,8 +55,9 @@ type imageReport struct {
 }
 
 type volumeReport struct {
-	Name   string `json:"name"`
-	Driver string `json:"driver"`
+	Name   string            `json:"name"`
+	Driver string            `json:"driver"`
+	Labels map[string]string `json:"labels,omitempty"` // cf. the agent's volume_labels.go
 }
 
 type networkReport struct {
@@ -349,7 +350,7 @@ func (a *app) applyState(hostID string, msg tunnelMessage, cache stateCache) {
 	}
 	volumes := make([]store.HostVolume, 0, len(msg.Volumes))
 	for _, v := range msg.Volumes {
-		volumes = append(volumes, store.HostVolume{HostID: hostID, Name: v.Name, Driver: v.Driver})
+		volumes = append(volumes, store.HostVolume{HostID: hostID, Name: v.Name, Driver: v.Driver, Labels: v.Labels})
 	}
 	networks := make([]store.HostNetwork, 0, len(msg.Networks))
 	for _, n := range msg.Networks {

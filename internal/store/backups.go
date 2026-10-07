@@ -41,9 +41,12 @@ type BackupJob struct {
 	Name          string
 	HostID        string
 	DestinationID string
-	Volumes       []string
-	Schedule      string // 5-field cron, empty for manual only
-	Mode          string // "live" | "stop"
+	Volumes       []string // ticked one by one: a fixed list
+	Stacks        []string // every volume of these compose projects, now and later
+	LabelRules    []string // "key" or "key=value": every volume with one of these labels
+	Excluded      []string // left out of this job, whatever else takes them
+	Schedule      string   // 5-field cron, empty for manual only
+	Mode          string   // "live" | "stop"
 	Retention     BackupRetention
 	Enabled       bool
 	CreatedAt     string
@@ -176,12 +179,25 @@ func (s *Store) DeleteBackupDestination(id string) error {
 
 // ---- jobs
 
+func decodeList(raw string, into *[]string) {
+	if raw != "" {
+		_ = json.Unmarshal([]byte(raw), into)
+	}
+}
+
+func jsonList(l []string) string {
+	if len(l) == 0 {
+		return "[]"
+	}
+	raw, _ := json.Marshal(l)
+	return string(raw)
+}
+
 func (s *Store) CreateBackupJob(j BackupJob) error {
-	vols, _ := json.Marshal(j.Volumes)
 	ret, _ := json.Marshal(j.Retention)
 	if _, err := s.db.Exec(
-		`INSERT INTO backup_jobs (id, name, host_id, destination_id, volumes, schedule, mode, retention, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		j.ID, j.Name, j.HostID, j.DestinationID, string(vols), j.Schedule, j.Mode, string(ret), boolInt(j.Enabled),
+		`INSERT INTO backup_jobs (id, name, host_id, destination_id, volumes, stacks, label_rules, excluded, schedule, mode, retention, enabled) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		j.ID, j.Name, j.HostID, j.DestinationID, jsonList(j.Volumes), jsonList(j.Stacks), jsonList(j.LabelRules), jsonList(j.Excluded), j.Schedule, j.Mode, string(ret), boolInt(j.Enabled),
 	); err != nil {
 		return fmt.Errorf("create backup job: %w", err)
 	}
@@ -189,11 +205,10 @@ func (s *Store) CreateBackupJob(j BackupJob) error {
 }
 
 func (s *Store) UpdateBackupJob(j BackupJob) error {
-	vols, _ := json.Marshal(j.Volumes)
 	ret, _ := json.Marshal(j.Retention)
 	res, err := s.db.Exec(
-		`UPDATE backup_jobs SET name = ?, host_id = ?, destination_id = ?, volumes = ?, schedule = ?, mode = ?, retention = ?, enabled = ? WHERE id = ?`,
-		j.Name, j.HostID, j.DestinationID, string(vols), j.Schedule, j.Mode, string(ret), boolInt(j.Enabled), j.ID,
+		`UPDATE backup_jobs SET name = ?, host_id = ?, destination_id = ?, volumes = ?, stacks = ?, label_rules = ?, excluded = ?, schedule = ?, mode = ?, retention = ?, enabled = ? WHERE id = ?`,
+		j.Name, j.HostID, j.DestinationID, jsonList(j.Volumes), jsonList(j.Stacks), jsonList(j.LabelRules), jsonList(j.Excluded), j.Schedule, j.Mode, string(ret), boolInt(j.Enabled), j.ID,
 	)
 	if err != nil {
 		return fmt.Errorf("update backup job: %w", err)
@@ -213,18 +228,22 @@ func boolInt(b bool) int {
 
 func scanJob(row interface{ Scan(...any) error }) (BackupJob, error) {
 	var j BackupJob
-	var vols, ret string
+	var vols, stacks, rules, excluded, ret string
 	var enabled int
-	if err := row.Scan(&j.ID, &j.Name, &j.HostID, &j.DestinationID, &vols, &j.Schedule, &j.Mode, &ret, &enabled, &j.CreatedAt); err != nil {
+	if err := row.Scan(&j.ID, &j.Name, &j.HostID, &j.DestinationID, &vols, &stacks, &rules, &excluded, &j.Schedule, &j.Mode, &ret, &enabled, &j.CreatedAt); err != nil {
 		return j, err
 	}
 	_ = json.Unmarshal([]byte(vols), &j.Volumes)
+	// older rows have '' for the columns added later
+	decodeList(stacks, &j.Stacks)
+	decodeList(rules, &j.LabelRules)
+	decodeList(excluded, &j.Excluded)
 	_ = json.Unmarshal([]byte(ret), &j.Retention)
 	j.Enabled = enabled != 0
 	return j, nil
 }
 
-const jobColumns = `id, name, host_id, destination_id, volumes, schedule, mode, retention, enabled, created_at`
+const jobColumns = `id, name, host_id, destination_id, volumes, stacks, label_rules, excluded, schedule, mode, retention, enabled, created_at`
 
 func (s *Store) GetBackupJob(id string) (BackupJob, error) {
 	j, err := scanJob(s.db.QueryRow(`SELECT `+jobColumns+` FROM backup_jobs WHERE id = ?`, id))

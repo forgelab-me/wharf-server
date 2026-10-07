@@ -567,7 +567,7 @@ func TestTheBackupPagesRenderForAnAdmin(t *testing.T) {
 	}
 	// the new-job form offers only named volumes
 	form := get(f.a.volumeBackupJobFormHandler, "/backups/jobs/new?host="+f.host.ID, nil).Body.String()
-	if !strings.Contains(form, `value="blog_data"`) || strings.Contains(form, "wharf-bk-123") || strings.Contains(form, strings.Repeat("ab", 32)) {
+	if !strings.Contains(form, `"n":"blog_data"`) || strings.Contains(form, "wharf-bk-123") || strings.Contains(form, strings.Repeat("ab", 32)) {
 		t.Error("named volumes only: no anonymous volume, no temporary share volume")
 	}
 }

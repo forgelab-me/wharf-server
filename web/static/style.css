@@ -464,9 +464,21 @@ option { background-color: var(--bg-elevated); color: var(--text); }
   border-radius: 6px;
   font-size: 14px;
 }
-/* A long list of checkboxes (a host's volumes) scrolls instead of stretching the page. */
-.check-list { max-height: 240px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; background: var(--bg-elevated); }
-.check-list label.radio { margin: 4px 0; }
+/* The volume tree of a backup job: stacks, their volumes, and a live preview of what is selected. */
+.vtree { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px; max-height: 360px; overflow-y: auto; }
+.vtree .vt-stack { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; }
+.vtree .vt-toggle { background: none; border: 0; color: var(--text-muted); cursor: pointer; width: 20px; padding: 0; font-size: 14px; }
+.vtree .vt-toggle:hover { color: var(--text); }
+.vtree .vt-kids { margin: 0 0 4px 12px; padding-left: 14px; border-left: 1px solid var(--border); }
+.vtree .vt-vol { display: flex; align-items: center; gap: 8px; margin: 5px 0; font-size: 13px; cursor: pointer; flex-wrap: wrap; }
+.vtree .vt-left-out { color: var(--text-muted); text-decoration: line-through; }
+.vchip { font-size: 11px; padding: 1px 8px; border-radius: 99px; white-space: nowrap; background: var(--bg-elevated); border: 1px solid var(--border); color: var(--text-muted); }
+.vchip.accent { background: rgba(45, 212, 191, 0.12); border-color: transparent; color: var(--accent); }
+.vchip.warn { background: rgba(224, 179, 77, 0.15); border-color: transparent; color: var(--warn); }
+.vpreview { background: var(--bg-elevated); border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; margin: 0 0 14px; font-size: 13px; }
+.vpreview .vt-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 0; }
+.vpreview .vt-why { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.vpreview .vt-warn { color: var(--danger); margin: 6px 0 0; }
 /* Not grouped with the inputs above: select's own right padding needs
    room for the chevron (cf. the global "select" rule) that a shared
    "padding: 9px 12px" would clobber. */
