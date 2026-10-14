@@ -2,6 +2,14 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.6] - 2026-10-13
+
+### Security
+- The image is built with Go 1.27.2 instead of 1.27.1, which fixes three denial-of-service issues in the standard library (CVE-2026-78667 in `net/http`, CVE-2026-78669 in `net/http`'s HTTP/2 and CVE-2026-97031 in `crypto/tls`), and ships `pcre2` 10.49 (CVE-2026-103111, an out-of-bounds write).
+
+### Changed
+- Updated the database driver `modernc.org/sqlite` (v1.59.0 → v1.60.1, with `modernc.org/libc` v1.75.7 → v1.77.1). SQLite itself stays at 3.53.4. A fault while reading the shared-memory file of a database in WAL mode no longer crashes the controller: the query fails and the connection stays usable. Binding the parameters of a statement is no longer quadratic.
+
 [0.20.5] - 2026-10-13
 
 ### Changed

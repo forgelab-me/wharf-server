@@ -1,7 +1,7 @@
 # Builds without a local Go toolchain: `docker build .` does everything.
 # Versions pinned exactly on purpose (cf. ARCHITECTURE.md conventions) --
 # bump deliberately, don't float on `latest`/`alpine`.
-FROM golang:1.27.1-alpine3.24 AS build
+FROM golang:1.27.2-alpine3.24 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
