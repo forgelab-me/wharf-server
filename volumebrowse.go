@@ -404,10 +404,9 @@ func (a *app) volumeBrowseSaveHandler(w http.ResponseWriter, r *http.Request) {
 
 // volumeBrowseDownloadHandler serves GET
 // /volumes/{hostID}/{name}/browse/download -- streams a file's raw
-// bytes rather than rendering a page. No size cap of its own beyond
-// what already applies to any tunnel command's reply; a very large file
-// realistically times out on the agent round trip before this handler
-// would need to reject it separately.
+// bytes rather than rendering a page. No size cap of its own: the agent
+// refuses a file over 6 MiB before reading it (the tunnel carries 8 MiB
+// per message), and an older agent would read it whole first.
 func (a *app) volumeBrowseDownloadHandler(w http.ResponseWriter, r *http.Request) {
 	hostID := r.PathValue("hostID")
 	name := r.PathValue("name")

@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.20.5] - 2026-10-13
+
+### Changed
+- Opening or downloading a file of more than 6 MiB from a volume's browser now ends with a clear message (`file too large to read here`) instead of a dropped connection, because the agent checks the size before reading the file. This needs the agent fix that comes with it (it also stops the agent's memory from growing until the host runs out): update the agents.
+
 [0.20.4] - 2026-10-07
 
 ### Changed
