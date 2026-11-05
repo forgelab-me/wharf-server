@@ -2,6 +2,17 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.21.0] - 2026-11-04
+
+### Added
+- **Single-use enrollment token.** An admin can generate one on the Hosts page (**Generate an enrollment token**); it is valid for one hour, stored only as a hash, shown once inside the `docker run` command (`--enrollment-token`). An agent that presents a valid token is approved automatically, with no manual click; an invalid or already used token is refused (401). An agent the controller already knows ignores it. `WHARF_REQUIRE_ENROLLMENT_TOKEN=true` makes the token mandatory for any new agent.
+- **Certificate rotation.** `POST /agent/rotate` lets an approved agent switch to a new certificate without being re-approved. The controller accepts the old and the new fingerprint until the new one is first used, then drops the old one, so an interruption never locks an agent out. Needs agent 0.10.0, which rotates its certificate once it is older than 90 days; older agents keep working unchanged.
+
+### Security
+- **Enrollment events are in the audit log** (category *Hosts*): `host.approve` when an enrollment token approves an agent, `host.rotate_cert` when an agent announces a new certificate, `host.purge_pending` when expired pending agents are removed, `host.enroll_refused` when an enrollment is refused (bad or missing token, too many pending), at most one entry per reason every 5 minutes so a flood on the agent port cannot fill the log. Generating a token (`host.enrollment_token`) was already recorded.
+- **A host that is not approved can no longer use the agent channel.** Until now only the interface kept a pending host from being offered as a deployment target; the protocol itself accepted any pinned certificate. Commands, deployment results, decryption, secret references, backup reports and the tunnel now answer 403 until an admin approves the host.
+- **Pending enrollments expire and are capped.** A pending agent is removed after `WHARF_PENDING_TTL` (default 24h, `0` to keep them) and no more than `WHARF_MAX_PENDING` (default 50, `0` for no limit) can wait at once; beyond that, enrollment answers 429. An agent that is still running when its pending entry is removed enrolls again and appears as a new pending entry.
+
 [0.20.6] - 2026-10-13
 
 ### Security

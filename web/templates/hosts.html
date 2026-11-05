@@ -72,8 +72,18 @@
   -v /opt/wharf-agent/stacks:/opt/wharf-agent/stacks \
   ghcr.io/forgelab-me/wharf-agent:latest \
   --controller={{.ControllerAddr}} \
-  --controller-fingerprint={{.ControllerFingerprint}}</pre>
+  --controller-fingerprint={{.ControllerFingerprint}}{{if .NewToken}} \
+  --enrollment-token={{.NewToken}}{{end}}</pre>
     <button class="btn btn-ghost copy-btn" data-copy-target="docker-run-cmd">Copy</button>
   </div>
+  {{if .NewToken}}
+  <p class="muted">This token is single-use, valid for one hour, and shown only once. The agent that presents it is approved automatically — no manual approval step.</p>
+  {{else}}
+  <form method="post" action="/hosts/enrollment-token">
+    <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+    <button class="btn btn-ghost" type="submit">Generate an enrollment token</button>
+    <span class="muted">Optional: skips the manual approval for one agent. Anything without a token still waits for approval.</span>
+  </form>
+  {{end}}
 </section>
 {{end}}

@@ -48,6 +48,16 @@ volumes:
   wharf-cache:
 ```
 
+### Agent enrollment settings
+
+All optional, set as environment variables of the controller:
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WHARF_PENDING_TTL` | `24h` | How long an unapproved agent stays in the pending list (`0` = forever) |
+| `WHARF_MAX_PENDING` | `50` | Maximum pending agents at once; further ones get a 429 (`0` = no limit) |
+| `WHARF_REQUIRE_ENROLLMENT_TOKEN` | `false` | `true` refuses any new agent that doesn't present a valid single-use enrollment token (generated on the Hosts page) |
+
 ### Ports
 
 | Port | Purpose |

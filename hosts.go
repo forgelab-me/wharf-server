@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/forgelab-me/wharf-server/internal/store"
 )
@@ -48,6 +49,24 @@ func (a *app) hostLabel(hostID string) string {
 // cf. ARCHITECTURE.md, "Enrôlement d'un nouvel agent". Tout le reste de
 // cette page (containers/images/... plus bas) reste mocké.
 func (a *app) hostsHandler(w http.ResponseWriter, r *http.Request) {
+	a.renderHosts(w, r, "")
+}
+
+// createEnrollmentTokenHandler serves POST /hosts/enrollment-token: mints a
+// single-use token (valid 1h) and re-renders /hosts with it filled into the
+// docker run command. Rendered directly, not redirected -- the clear value
+// exists only in this response, the store keeps just its hash.
+func (a *app) createEnrollmentTokenHandler(w http.ResponseWriter, r *http.Request) {
+	token, err := a.store.CreateEnrollmentToken(usernameFromContext(r.Context()), time.Hour)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.audit(r, "host.enrollment_token", "", "")
+	a.renderHosts(w, r, token)
+}
+
+func (a *app) renderHosts(w http.ResponseWriter, r *http.Request, newToken string) {
 	all, err := a.store.ListHosts()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -82,6 +101,7 @@ func (a *app) hostsHandler(w http.ResponseWriter, r *http.Request) {
 		"ControllerFingerprint": a.fingerprint,
 		"ControllerAddr":        controllerAddr,
 		"LatestAgentVersion":    latestAgent,
+		"NewToken":              newToken,
 	}
 	render(w, r, "layout", "hosts.html", data)
 }

@@ -14,7 +14,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/forgelab-me/wharf-server/internal/identity"
 	"github.com/forgelab-me/wharf-server/internal/keys"
@@ -54,10 +58,132 @@ func verifyCaller(r *http.Request, st *store.Store, hostID string) error {
 	if err != nil {
 		return err
 	}
-	if h.CertFingerprint != fp {
-		return fmt.Errorf("certificate does not match host %q", hostID)
+	if h.CertFingerprint == fp {
+		return nil
 	}
-	return nil
+	// A certificate rotation in flight: the new fingerprint is accepted
+	// next to the pinned one, and becomes the pinned one the first time it
+	// is actually presented (cf. rotateHandler).
+	if next, err := st.NextFingerprint(hostID); err == nil && next != "" && next == fp {
+		return st.PromoteFingerprint(hostID, fp)
+	}
+	return fmt.Errorf("certificate does not match host %q", hostID)
+}
+
+// agentAuth guards every agent-channel route that acts on behalf of an
+// enrolled host (everything but the enrollment pair): the calling
+// certificate must resolve to a host that an admin actually approved. The
+// pending state was previously enforced only by the UI never offering a
+// pending host as a deployment target; this makes the protocol itself
+// refuse it, so a pending agent can't claim commands, decrypt, resolve
+// secrets or open the tunnel.
+func (a *app) agentAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fp, err := callerFingerprint(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		h, err := a.store.GetHostByFingerprint(fp)
+		if errors.Is(err, store.ErrNotFound) {
+			http.Error(w, "unknown caller", http.StatusForbidden)
+			return
+		} else if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if h.Status != "connected" {
+			http.Error(w, "host is not approved", http.StatusForbidden)
+			return
+		}
+		if h.CertFingerprint != fp {
+			if err := a.store.PromoteFingerprint(h.ID, fp); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		next(w, r)
+	}
+}
+
+// Enrollment limits, overridable from the environment.
+//
+//	WHARF_PENDING_TTL               how long an unapproved agent may sit in
+//	                                the pending list (default 24h, 0 = forever)
+//	WHARF_MAX_PENDING               cap on simultaneous pending rows, so an
+//	                                open :8443 can't be flooded (default 50, 0 = no cap)
+//	WHARF_REQUIRE_ENROLLMENT_TOKEN  true = a new agent without a valid token is refused
+func pendingTTL() time.Duration {
+	if v := os.Getenv("WHARF_PENDING_TTL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d >= 0 {
+			return d
+		}
+		log.Println("ignoring invalid WHARF_PENDING_TTL:", v)
+	}
+	return 24 * time.Hour
+}
+
+func maxPending() int {
+	if v := os.Getenv("WHARF_MAX_PENDING"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			return n
+		}
+		log.Println("ignoring invalid WHARF_MAX_PENDING:", v)
+	}
+	return 50
+}
+
+func requireEnrollmentToken() bool {
+	b, _ := strconv.ParseBool(os.Getenv("WHARF_REQUIRE_ENROLLMENT_TOKEN"))
+	return b
+}
+
+// bearerToken extracts "Authorization: Bearer <token>".
+func bearerToken(r *http.Request) string {
+	h := r.Header.Get("Authorization")
+	if len(h) > 7 && strings.EqualFold(h[:7], "Bearer ") {
+		return strings.TrimSpace(h[7:])
+	}
+	return ""
+}
+
+var (
+	refusalMu   sync.Mutex
+	refusalLast = map[string]time.Time{}
+)
+
+// auditEnrollRefused records a refused enrollment, at most once per reason
+// every 5 minutes: :8443 is reachable by anyone, so an unthrottled entry
+// per attempt would let a flood fill the audit log.
+func (a *app) auditEnrollRefused(reason, fingerprint string) {
+	refusalMu.Lock()
+	if time.Since(refusalLast[reason]) < 5*time.Minute {
+		refusalMu.Unlock()
+		return
+	}
+	refusalLast[reason] = time.Now()
+	refusalMu.Unlock()
+	a.auditSystem("agent", "host.enroll_refused", fingerprint, reason)
+}
+
+// purgeLoop periodically drops stale pending hosts and old enrollment
+// tokens. A still-running agent whose pending row was purged gets a 404 on
+// its next status poll and re-enrolls (cf. the agent's pollLoop).
+func (a *app) purgeLoop() {
+	for {
+		if ttl := pendingTTL(); ttl > 0 {
+			if n, err := a.store.PurgeStalePending(ttl); err != nil {
+				log.Println("purge pending hosts:", err)
+			} else if n > 0 {
+				a.auditSystem("system", "host.purge_pending", "", fmt.Sprintf("%d pending host(s) removed after %s without approval", n, ttl))
+				log.Println("purged", n, "stale pending host(s)")
+			}
+		}
+		if _, err := a.store.PurgeEnrollmentTokens(); err != nil {
+			log.Println("purge enrollment tokens:", err)
+		}
+		time.Sleep(10 * time.Minute)
+	}
 }
 
 // enrollCreateHandler serves POST /agent/enrollments on the agent channel
@@ -83,10 +209,62 @@ func (a *app) enrollCreateHandler(w http.ResponseWriter, r *http.Request) {
 		hostname = "agent"
 	}
 
+	// A known certificate is a reconnect: no token, no cap, nothing new.
+	// Only a brand new identity goes through the checks below.
+	token := bearerToken(r)
+	_, lookupErr := a.store.GetHostByFingerprint(fp)
+	isNew := errors.Is(lookupErr, store.ErrNotFound)
+	if lookupErr != nil && !isNew {
+		http.Error(w, lookupErr.Error(), http.StatusInternalServerError)
+		return
+	}
+	tokenUsed := false
+	if isNew {
+		switch {
+		case token != "":
+			if err := a.store.ConsumeEnrollmentToken(token, ""); err != nil {
+				a.auditEnrollRefused("invalid, expired or already used enrollment token", fp)
+				http.Error(w, "invalid or expired enrollment token", http.StatusUnauthorized)
+				return
+			}
+			tokenUsed = true
+		case requireEnrollmentToken():
+			a.auditEnrollRefused("enrollment token required, none presented", fp)
+			http.Error(w, "an enrollment token is required", http.StatusUnauthorized)
+			return
+		default:
+			if max := maxPending(); max > 0 {
+				n, err := a.store.CountPendingHosts()
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				if n >= max {
+					a.auditEnrollRefused("too many pending enrollments", fp)
+					w.Header().Set("Retry-After", "600")
+					http.Error(w, "too many pending enrollments", http.StatusTooManyRequests)
+					return
+				}
+			}
+		}
+	}
+
 	h, created, err := a.store.UpsertHostByFingerprint(hostname, fp)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+	// A valid single-use token is minted by an authenticated admin, so
+	// presenting it stands in for the manual approval click.
+	if tokenUsed && created {
+		if err := a.store.ApproveHost(h.ID, "enrollment-token"); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		_ = a.store.SetEnrollmentTokenHost(token, h.ID)
+		a.auditSystem("enrollment-token", "host.approve", h.ID, "approved by a single-use enrollment token, certificate "+fp)
+		log.Println("enrollment: host", h.ID, "auto-approved by enrollment token")
+		h.Status = "connected"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -132,6 +310,50 @@ func (a *app) enrollStatusHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(enrollResponse{ID: h.ID, Status: h.Status})
+}
+
+// rotateHandler serves POST /agent/rotate: an approved agent, authenticated
+// by its current certificate, announces the certificate it is about to
+// switch to. Two-phase on purpose: the new fingerprint is only *registered*
+// here (accepted next to the old one) and is promoted the first time the
+// agent presents it, so a crash between the two steps can't lock an agent
+// out. The private key of the new certificate never travels.
+func (a *app) rotateHandler(w http.ResponseWriter, r *http.Request) {
+	fp, err := callerFingerprint(r)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	host, err := a.store.GetHostByFingerprint(fp)
+	if err != nil {
+		http.Error(w, "unknown caller", http.StatusForbidden)
+		return
+	}
+	var req struct {
+		CertPEM string `json:"cert_pem"`
+	}
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 16<<10)).Decode(&req); err != nil {
+		http.Error(w, "invalid JSON body: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+	newFP, err := identity.ValidateClientCertPEM([]byte(req.CertPEM))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := a.store.SetNextFingerprint(host.ID, newFP); errors.Is(err, store.ErrFingerprintInUse) {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	} else if errors.Is(err, store.ErrNotFound) {
+		http.Error(w, "the new certificate must differ from the current one", http.StatusBadRequest)
+		return
+	} else if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	a.auditSystem("agent:"+host.ID, "host.rotate_cert", host.ID, "announced next certificate "+newFP)
+	log.Println("rotation: host", host.ID, "registered next certificate", newFP)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // commandsHandler serves GET /agent/commands — the calling agent (verified

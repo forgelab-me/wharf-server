@@ -118,6 +118,39 @@ func PEM(cert tls.Certificate) []byte {
 	return pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert.Certificate[0]})
 }
 
+// ValidateClientCertPEM is FingerprintFromPEM plus the sanity checks a
+// rotation target needs: exactly one certificate, currently valid, usable
+// for client authentication.
+func ValidateClientCertPEM(certPEM []byte) (string, error) {
+	block, rest := pem.Decode(certPEM)
+	if block == nil || block.Type != "CERTIFICATE" {
+		return "", fmt.Errorf("invalid certificate PEM")
+	}
+	if next, _ := pem.Decode(rest); next != nil {
+		return "", fmt.Errorf("expected a single certificate")
+	}
+	c, err := x509.ParseCertificate(block.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("parse certificate: %w", err)
+	}
+	now := time.Now()
+	if now.After(c.NotAfter) || now.Add(24*time.Hour).Before(c.NotBefore) {
+		return "", fmt.Errorf("certificate is not currently valid")
+	}
+	if len(c.ExtKeyUsage) > 0 {
+		ok := false
+		for _, u := range c.ExtKeyUsage {
+			if u == x509.ExtKeyUsageClientAuth || u == x509.ExtKeyUsageAny {
+				ok = true
+			}
+		}
+		if !ok {
+			return "", fmt.Errorf("certificate is not valid for client authentication")
+		}
+	}
+	return Fingerprint(block.Bytes), nil
+}
+
 // FingerprintFromPEM parses a PEM-encoded certificate and returns its
 // fingerprint, for the controller side verifying what an agent sent.
 func FingerprintFromPEM(certPEM []byte) (string, error) {

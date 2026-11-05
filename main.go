@@ -382,6 +382,7 @@ func main() {
 	mux.HandleFunc("GET /hosts/{id}", a.hostViewHandler)
 	mux.HandleFunc("GET /hosts/{id}/stats", a.hostStatsHandler)
 	mux.HandleFunc("GET /stats/stacks", a.stackStatsHandler)
+	mux.HandleFunc("POST /hosts/enrollment-token", requireAdmin(a.createEnrollmentTokenHandler))
 	mux.HandleFunc("POST /hosts/{id}/approve", a.approveHostHandler)
 	mux.HandleFunc("POST /hosts/{id}/reject", a.rejectHostHandler)
 	mux.HandleFunc("POST /hosts/{id}/address", a.setHostAddressHandler)
@@ -508,12 +509,17 @@ func main() {
 	agentMux := http.NewServeMux()
 	agentMux.HandleFunc("POST /agent/enrollments", a.enrollCreateHandler)
 	agentMux.HandleFunc("GET /agent/enrollments/{id}", a.enrollStatusHandler)
-	agentMux.HandleFunc("GET /agent/commands", a.commandsHandler)
-	agentMux.HandleFunc("POST /agent/deployments/{id}/result", a.deploymentResultHandler)
-	agentMux.HandleFunc("POST /agent/decrypt", a.decryptHandler)
-	agentMux.HandleFunc("POST /agent/resolve", a.resolveHandler)
-	agentMux.HandleFunc("POST /agent/backup-runs/{id}/report", a.volumeBackupReportHandler)
-	agentMux.HandleFunc("GET /agent/tunnel", a.tunnelHandler)
+	// Everything below acts for an enrolled host: agentAuth refuses any
+	// caller whose host is not approved ("connected"). Only the two
+	// enrollment routes above stay reachable while pending.
+	agentMux.HandleFunc("GET /agent/commands", a.agentAuth(a.commandsHandler))
+	agentMux.HandleFunc("POST /agent/deployments/{id}/result", a.agentAuth(a.deploymentResultHandler))
+	agentMux.HandleFunc("POST /agent/decrypt", a.agentAuth(a.decryptHandler))
+	agentMux.HandleFunc("POST /agent/resolve", a.agentAuth(a.resolveHandler))
+	agentMux.HandleFunc("POST /agent/backup-runs/{id}/report", a.agentAuth(a.volumeBackupReportHandler))
+	agentMux.HandleFunc("GET /agent/tunnel", a.agentAuth(a.tunnelHandler))
+	agentMux.HandleFunc("POST /agent/rotate", a.agentAuth(a.rotateHandler))
+	go a.purgeLoop()
 
 	// RequestClientCert (not Require/RequireAndVerify): there is no CA to
 	// verify against by design (cf. ARCHITECTURE.md, épinglage par

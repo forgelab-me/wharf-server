@@ -133,6 +133,15 @@ func Open(path string) (*Store, error) {
 		agent_version    TEXT NOT NULL DEFAULT '',
 		arch             TEXT NOT NULL DEFAULT ''
 	);
+	CREATE TABLE IF NOT EXISTS enrollment_tokens (
+		id           TEXT PRIMARY KEY,
+		token_hash   TEXT NOT NULL UNIQUE,
+		created_by   TEXT NOT NULL DEFAULT '',
+		created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+		expires_at   TEXT NOT NULL,
+		used_at      TEXT,
+		used_by_host TEXT NOT NULL DEFAULT ''
+	);
 	CREATE TABLE IF NOT EXISTS deployments (
 		id           TEXT PRIMARY KEY,
 		stack_id     TEXT NOT NULL,
@@ -370,6 +379,7 @@ func Open(path string) (*Store, error) {
 	}
 	for _, m := range []struct{ table, column string }{
 		{"hosts", "arch"},
+		{"hosts", "next_cert_fingerprint"},
 		{"host_containers", "image_id"},
 		{"host_images", "digest"},
 		{"image_scans", "notice"},
@@ -627,7 +637,8 @@ func (s *Store) UpsertHostByFingerprint(name, fingerprint string) (host Host, cr
 func (s *Store) GetHostByFingerprint(fingerprint string) (Host, error) {
 	var h Host
 	err := s.db.QueryRow(
-		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address, agent_version FROM hosts WHERE cert_fingerprint = ?`, fingerprint,
+		`SELECT id, name, status, cert_fingerprint, approved_by, last_seen_at, address, agent_version FROM hosts
+		 WHERE cert_fingerprint = ?1 OR (next_cert_fingerprint != '' AND next_cert_fingerprint = ?1)`, fingerprint,
 	).Scan(&h.ID, &h.Name, &h.Status, &h.CertFingerprint, &h.ApprovedBy, &h.LastSeenAt, &h.Address, &h.AgentVersion)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Host{}, ErrNotFound
