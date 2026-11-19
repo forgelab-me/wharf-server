@@ -2,6 +2,11 @@
 
 All notable changes to `wharf-server` are documented here. Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions match the `vX.Y.Z` git tags that trigger a release build.
 
+[0.22.0] - 2026-11-19
+
+### Added
+- **Infisical as a secret provider.** A Git stack's `secrets.refs.yaml` can read from Infisical, the cloud service or a self-hosted instance: `ref+infisical://<project id>/<environment>[/<folder>]#/<secret name>`. A connection (**Settings → Secret providers → Infisical**) holds the site URL (and a CA certificate for a private CA) and, optionally, default credentials: a machine identity access token, or a Universal Auth client ID and secret, which the controller logs in with and renews by itself. **Test** logs in and asks Infisical for the identity's own details, without reading a secret. [Path rules](https://wharf.forgelab.me/guide/path-rules) apply to `<project id>/<environment>/<folder>`. Needs agent 0.5.0 or later, like the other providers.
+
 [0.21.0] - 2026-11-04
 
 ### Added

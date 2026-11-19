@@ -322,7 +322,7 @@ func main() {
 	}
 	bws := secrets.NewBwsTool(cacheDir)
 	a := &app{store: st, keys: kc, fingerprint: fingerprint, tunnels: newTunnelRegistry(), polls: newPollRegistry(), dataDir: dataDir, notifyState: newNotifyState(), bws: bws, volBackups: newVolumeBackups(),
-		resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider(), secrets.BwsProvider(bws))}
+		resolver: secrets.NewResolver(secrets.SOPSProvider(), secrets.VaultProvider(), secrets.BwsProvider(bws), secrets.InfisicalProvider())}
 
 	// Same 5-field parser used to validate a schedule at stack-creation
 	// time (cronParser in poller.go) — registration must never accept a
